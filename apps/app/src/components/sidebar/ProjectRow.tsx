@@ -16,10 +16,12 @@ import {
   useState,
   type CSSProperties,
   type MouseEventHandler,
+  type PointerEventHandler,
   type ReactNode,
 } from "react";
 import { useAtomValue, useSetAtom } from "jotai";
 import { DndContext, DragOverlay, useDroppable } from "@dnd-kit/core";
+import { useComposedRefs } from "@radix-ui/react-compose-refs";
 import {
   SortableContext,
   verticalListSortingStrategy,
@@ -161,6 +163,10 @@ import {
   type BuiltInSidebarSectionOptionsById,
 } from "./BuiltInSidebarSection";
 import { SectionThreadDndProvider } from "./SectionThreadDndContext";
+import {
+  SIDEBAR_THREAD_DRAG_CHIP_CLASS,
+  SIDEBAR_THREAD_DRAG_CHIP_STYLE,
+} from "./sidebarThreadDragChip";
 
 const SIDEBAR_STICKY_PARENT_DEPTH_CAP = 4;
 
@@ -253,6 +259,8 @@ interface ChronologicalSectionThreadSectionsProps extends SectionThreadTreeProps
 type ProjectThreadTreeVariant = "project" | "section";
 
 type ProjectThreadListClickCaptureHandler = MouseEventHandler<HTMLDivElement>;
+type ProjectThreadListPointerDownCaptureHandler =
+  PointerEventHandler<HTMLDivElement>;
 
 const EMPTY_PROJECT_THREADS: ThreadListEntry[] = [];
 const EMPTY_PINNED_ROOT_NODES: readonly ProjectThreadNode[] = [];
@@ -262,6 +270,7 @@ interface ProjectThreadTreeGroupProps {
   children: ReactNode;
   variant: ProjectThreadTreeVariant;
   onClickCapture?: ProjectThreadListClickCaptureHandler;
+  onPointerDownCapture?: ProjectThreadListPointerDownCaptureHandler;
 }
 
 interface ThreadTreeNodeRowProps {
@@ -584,6 +593,7 @@ function ProjectThreadTreeGroup({
   children,
   variant,
   onClickCapture,
+  onPointerDownCapture,
 }: ProjectThreadTreeGroupProps) {
   return (
     <div
@@ -593,6 +603,7 @@ function ProjectThreadTreeGroup({
         getProjectThreadTreeGroupLineClassName(variant),
       )}
       onClickCapture={onClickCapture}
+      onPointerDownCapture={onPointerDownCapture}
     >
       {children}
     </div>
@@ -665,6 +676,11 @@ const DraggableSectionThreadItemRow = memo(
       disabled: false,
       displace: false,
     });
+    const isActive = sectionDnd.activeThread?.id === itemId;
+    const hasProjectedDestination =
+      sectionDnd.dragOverParentKey !== null ||
+      sectionDnd.nestTarget?.state === "valid" ||
+      sectionDnd.reorderTarget !== null;
 
     return (
       <ThreadTreeItemRow
@@ -674,8 +690,14 @@ const DraggableSectionThreadItemRow = memo(
         sectionDnd={sectionDnd}
         sortableRef={setNodeRef}
         sortableStyle={
-          sectionDnd.activeThread?.id === itemId
-            ? { ...style, opacity: 0.25 }
+          isActive
+            ? {
+                ...style,
+                opacity: hasProjectedDestination ? 0 : 0.5,
+                pointerEvents: "none",
+                position: hasProjectedDestination ? "absolute" : style.position,
+                width: hasProjectedDestination ? "100%" : undefined,
+              }
             : style
         }
       />
@@ -1263,12 +1285,16 @@ function getDropPreviewRowStyle({
 }
 
 export function DropPreviewRow({
+  animate = true,
   depth,
   nest = false,
+  thread,
   visible = true,
 }: {
+  animate?: boolean;
   depth: number;
   nest?: boolean;
+  thread?: ThreadListEntry | null;
   visible?: boolean;
 }) {
   return (
@@ -1280,18 +1306,32 @@ export function DropPreviewRow({
       style={getDropPreviewRowStyle({ depth, nest, visible })}
       className={cn(
         SIDEBAR_ROW_BASE_CLASS,
-        "pointer-events-none overflow-hidden transition-[height,margin,opacity,border-width] duration-150 ease-out",
+        "pointer-events-none overflow-hidden",
+        animate
+          ? "transition-[height,margin,opacity,border-width] duration-150 ease-out"
+          : "transition-none",
         visible
-          ? cn(
-              COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS,
-              "border border-dashed opacity-100",
-              nest
-                ? "border-sidebar-ring bg-sidebar-accent/70"
-                : "border-sidebar-border bg-sidebar-accent/40",
-            )
+          ? thread
+            ? cn(
+                COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS,
+                "text-sidebar-foreground opacity-50",
+              )
+            : cn(
+                COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS,
+                "border border-dashed opacity-100",
+                nest
+                  ? "border-sidebar-ring bg-sidebar-accent/70"
+                  : "border-sidebar-border bg-sidebar-accent/40",
+              )
           : "h-0 border-0 opacity-0 max-md:pointer-coarse:h-0",
       )}
-    />
+    >
+      {thread && visible ? (
+        <span className="min-w-0 flex-1 truncate">
+          {getThreadDisplayTitle(thread)}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -1311,17 +1351,17 @@ export function SectionThreadDragOverlayPortal({
   );
 }
 
-function SectionThreadDragOverlay({ thread }: { thread: ThreadListEntry }) {
+export function SectionThreadDragOverlay({
+  thread,
+}: {
+  thread: ThreadListEntry;
+}) {
   return (
     <div
       aria-hidden="true"
       data-sidebar-section-drag-overlay="true"
-      style={{ paddingLeft: getSidebarThreadRowPaddingLeft(0) }}
-      className={cn(
-        SIDEBAR_ROW_BASE_CLASS,
-        COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS,
-        "pointer-events-none bg-sidebar-accent text-sidebar-accent-foreground shadow-sm ring-1 ring-sidebar-border",
-      )}
+      style={SIDEBAR_THREAD_DRAG_CHIP_STYLE}
+      className={SIDEBAR_THREAD_DRAG_CHIP_CLASS}
     >
       <span className="min-w-0 flex-1 truncate">
         {getThreadDisplayTitle(thread)}
@@ -1372,7 +1412,14 @@ const SectionTreeItemRow = memo(function SectionTreeItemRow({
       : null;
   const showDropPreview =
     sectionDnd?.dragOverParentKey === sectionKey &&
-    inlinePreviewBeforeKey === null;
+    (isCollapsed || inlinePreviewBeforeKey === null);
+  const sourceItemIds = sectionDnd?.itemIdsByParentKey.get(sectionKey);
+  const isProjectedSourceEmpty =
+    sectionDnd?.activeThread != null &&
+    sectionDnd.dragOverParentKey !== null &&
+    sectionDnd.dragOverParentKey !== sectionKey &&
+    sourceItemIds?.length === 1 &&
+    sourceItemIds[0] === sectionDnd.activeThread.id;
   const previewDepth = getThreadRowDepth({
     depthOffset:
       variant === "section" && depthOffset === 0 ? 0 : depthOffset + 1,
@@ -1380,8 +1427,7 @@ const SectionTreeItemRow = memo(function SectionTreeItemRow({
     variant,
   });
   const showChildren = !isCollapsed && section.items.length > 0;
-  const showChildrenArea =
-    showChildren || (sectionDnd?.activeThread != null && !isCollapsed);
+  const showChildrenArea = showChildren || (!isCollapsed && showDropPreview);
   const sectionThreads = useMemo(
     () => getProjectThreadItemDescendants(section.items),
     [section.items],
@@ -1395,7 +1441,12 @@ const SectionTreeItemRow = memo(function SectionTreeItemRow({
     });
 
   const childrenArea = showChildrenArea ? (
-    <div className="relative space-y-px">
+    <div
+      className={cn(
+        "relative",
+        isProjectedSourceEmpty ? "space-y-0" : "space-y-px",
+      )}
+    >
       {variant === "project" || depthOffset > 0 ? (
         <ThreadTreeGroupLine parentRowDepth={headerDepth} />
       ) : null}
@@ -1415,7 +1466,10 @@ const SectionTreeItemRow = memo(function SectionTreeItemRow({
               return (
                 <Fragment key={itemKey}>
                   {inlinePreviewBeforeKey === itemKey ? (
-                    <DropPreviewRow depth={previewDepth} />
+                    <DropPreviewRow
+                      depth={previewDepth}
+                      thread={sectionDnd?.activeThread}
+                    />
                   ) : null}
                   <SectionDndItemRow
                     projectId={getItemProjectId(item)}
@@ -1444,7 +1498,12 @@ const SectionTreeItemRow = memo(function SectionTreeItemRow({
         </SectionDndSortableList>
       ) : null}
       {sectionDnd ? (
-        <DropPreviewRow visible={showDropPreview} depth={previewDepth} />
+        <DropPreviewRow
+          animate={sectionDnd.activeThread !== null}
+          visible={showDropPreview}
+          depth={previewDepth}
+          thread={sectionDnd.activeThread}
+        />
       ) : null}
     </div>
   ) : null;
@@ -1488,6 +1547,8 @@ const SectionTreeItemRow = memo(function SectionTreeItemRow({
         isDropTargetActive={isDropTargetActive}
         sectionRef={sortableRef}
         sectionStyle={sortableStyle}
+        childrenInset={!isProjectedSourceEmpty}
+        showChildrenWhenCollapsed={showDropPreview}
       >
         {childrenArea}
       </TopLevelSidebarSection>
@@ -1500,7 +1561,8 @@ const SectionTreeItemRow = memo(function SectionTreeItemRow({
       style={sortableStyle}
       data-sidebar-section-id={section.id}
       className={cn(
-        "space-y-0.5 rounded-md transition-colors",
+        "rounded-md transition-colors",
+        isProjectedSourceEmpty ? "space-y-0" : "space-y-0.5",
         isDropTargetActive &&
           "[&_.bb-sidebar-hover-actions-row]:!bg-sidebar-accent [&_.bb-sidebar-hover-actions-row]:!text-sidebar-accent-foreground",
       )}
@@ -1557,6 +1619,10 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
     disabled: !nestDropEnabled,
     resizeObserverConfig: { disabled: !nestDropEnabled },
   });
+  const rowNodeRef = useComposedRefs<HTMLDivElement>(
+    setNestDropNodeRef,
+    sortableRef,
+  );
   const nestTargetState =
     sectionDnd?.nestTarget?.threadId === node.thread.id
       ? sectionDnd.nestTarget.state
@@ -1577,12 +1643,12 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
     () =>
       nestDropEnabled
         ? {
-            setNodeRef: setNestDropNodeRef,
+            setNodeRef: rowNodeRef,
             state: nestTargetState,
             reorderPlacement,
           }
         : undefined,
-    [nestDropEnabled, nestTargetState, reorderPlacement, setNestDropNodeRef],
+    [nestDropEnabled, nestTargetState, reorderPlacement, rowNodeRef],
   );
   const parentRowDepth = getThreadRowDepth({
     depthOffset,
@@ -1654,11 +1720,7 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
   }
 
   return (
-    <SidebarStickyGroup
-      ref={sortableRef}
-      style={sortableStyle}
-      className="space-y-0.5"
-    >
+    <SidebarStickyGroup style={sortableStyle} className="space-y-0.5">
       {row}
       {showChildren || showNestPreview ? (
         <div className="relative space-y-px">
@@ -1678,7 +1740,11 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
                 return (
                   <Fragment key={itemKey}>
                     {nestPreviewBeforeKey === itemKey ? (
-                      <DropPreviewRow depth={parentRowDepth + 1} nest />
+                      <DropPreviewRow
+                        depth={parentRowDepth + 1}
+                        nest
+                        thread={sectionDnd?.activeThread}
+                      />
                     ) : null}
                     <SectionDndItemRow
                       projectId={rowProjectId}
@@ -1701,7 +1767,11 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
             />
           ) : null}
           {showNestPreview && nestPreviewBeforeKey === null ? (
-            <DropPreviewRow depth={parentRowDepth + 1} nest />
+            <DropPreviewRow
+              depth={parentRowDepth + 1}
+              nest
+              thread={sectionDnd?.activeThread}
+            />
           ) : null}
         </div>
       ) : null}
@@ -1836,6 +1906,7 @@ function SectionThreadTreeItems({
                   nodeDepth: 0,
                   variant,
                 })}
+                thread={sectionDnd?.activeThread}
               />
             ) : null}
             <SectionDndItemRow
@@ -1864,6 +1935,7 @@ function SectionThreadTreeItems({
     <ProjectThreadTreeGroup
       variant={variant}
       onClickCapture={sectionDnd?.onClickCapture}
+      onPointerDownCapture={sectionDnd?.onPointerDownCapture}
     >
       {sortableParentKey !== undefined ? (
         <SectionDndSortableList
@@ -2025,7 +2097,9 @@ export const ProjectThreadTree = memo(function ProjectThreadTree({
       />
       {dndParentKey !== undefined && sectionDnd ? (
         <DropPreviewRow
+          animate={sectionDnd.activeThread !== null}
           visible={showTreeEndPreview}
+          thread={sectionDnd.activeThread}
           depth={getThreadRowDepth({
             depthOffset: getProjectThreadTreeRootDepthOffset(variant),
             nodeDepth: 0,
@@ -2185,7 +2259,12 @@ export const ChronologicalSectionThreadSections = memo(
             {looseEmptyState}
           </div>
           <div className="col-start-1 row-start-1">
-            <DropPreviewRow depth={0} visible={showLoosePreview} />
+            <DropPreviewRow
+              animate={renderedSectionDnd.activeThread !== null}
+              depth={0}
+              visible={showLoosePreview}
+              thread={renderedSectionDnd.activeThread}
+            />
           </div>
         </div>
       ) : (
@@ -2199,7 +2278,9 @@ export const ChronologicalSectionThreadSections = memo(
         {threadsListContent}
         {looseItems.length > 0 ? (
           <DropPreviewRow
+            animate={renderedSectionDnd.activeThread !== null}
             visible={showLoosePreview}
+            thread={renderedSectionDnd.activeThread}
             depth={getThreadRowDepth({
               depthOffset: 0,
               nodeDepth: 0,
