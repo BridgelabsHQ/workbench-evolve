@@ -34,6 +34,7 @@ import {
   normalizeRealtimePayload,
   normalizeRpcJsonResult,
   normalizeRpcRegistration,
+  publishRpcMethod,
   normalizeWebSocketRouteRegistration,
   pluginCliCollisionWarning,
   providerAlreadyRegisteredMessage,
@@ -261,6 +262,9 @@ export interface FakePluginRegistrations {
   settingsDescriptors: PluginSettingDescriptors;
   httpRoutes: FakeHttpRouteRecord[];
   websocketRoutes: ExperimentalFakeWebSocketRouteRecord[];
+  experimental_publishedRpcMethods: Array<
+    NonNullable<ReturnType<typeof publishRpcMethod>>
+  >;
   rpcMethods: string[];
   services: FakeServiceRecord[];
   schedules: FakeScheduleRecord[];
@@ -582,6 +586,7 @@ function jsonRoundTrip(value: unknown, what: string): unknown {
 }
 
 interface FakeRpcRecord {
+  publication: ReturnType<typeof publishRpcMethod>;
   inputSchema: StandardSchemaV1;
   outputSchema: StandardSchemaV1;
   handler: (input: never) => unknown;
@@ -835,12 +840,13 @@ function createFakePluginHostInternal(
   // --- rpc ---
   const rpcHandlers = new Map<string, FakeRpcRecord>();
   const rpc: PluginRpc = {
-    register(contract, handlers) {
+    register(contract, handlers, registrationOptions) {
       assertLive();
       for (const [name, record] of normalizeRpcRegistration(
         contract,
         handlers,
         rpcHandlers,
+        registrationOptions,
       )) {
         rpcHandlers.set(name, record);
       }
@@ -1568,6 +1574,11 @@ function createFakePluginHostInternal(
       settingsDescriptors,
       httpRoutes,
       websocketRoutes,
+      get experimental_publishedRpcMethods() {
+        return [...rpcHandlers.values()].flatMap((record) =>
+          record.publication === null ? [] : [record.publication],
+        );
+      },
       get rpcMethods() {
         return [...rpcHandlers.keys()];
       },
