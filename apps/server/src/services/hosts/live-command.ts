@@ -232,7 +232,8 @@ export async function runLiveHostCommand<
     args.execution ?? createLiveHostCommandExecution(args.hostId);
   try {
     const call =
-      args.command.type === "thread.stop"
+      args.command.type === "thread.stop" ||
+      args.command.type === "thread.storage.delete"
         ? callHostOnlineRpc
         : callHostOnlineRpcForWork;
     const sourceCommand: HostDaemonCommand = args.command;
