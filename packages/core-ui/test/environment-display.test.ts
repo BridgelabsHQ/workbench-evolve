@@ -76,7 +76,6 @@ describe("formatEnvironmentDisplay", () => {
       ).toEqual({
         modeLabel: "Working locally",
         compactModeLabel: "Local",
-        typeLabel: "Local",
         providerLabel: null,
         lifecycle: null,
         id: "env_test",
@@ -91,7 +90,6 @@ describe("formatEnvironmentDisplay", () => {
       });
       expect(result.modeLabel).toBe("Working remotely");
       expect(result.compactModeLabel).toBe("Remote");
-      expect(result.typeLabel).toBe("Remote");
     });
 
     it("labels a branch-bearing row by its provider, since the branch is shown beside it", () => {
@@ -105,7 +103,6 @@ describe("formatEnvironmentDisplay", () => {
       });
       expect(result.modeLabel).toBe("Worktree");
       expect(result.compactModeLabel).toBe("Worktree");
-      expect(result.typeLabel).toBe("Worktree · Local");
     });
 
     it("prefers the environment name over the branch name", () => {
@@ -139,7 +136,6 @@ describe("formatEnvironmentDisplay", () => {
       });
       expect(result.modeLabel).toBe("Modal sandbox");
       expect(result.compactModeLabel).toBe("Modal sandbox");
-      expect(result.typeLabel).toBe("Modal sandbox · Remote");
     });
 
     it("falls back to the bare provider id when the plugin is not registered", () => {
@@ -151,7 +147,6 @@ describe("formatEnvironmentDisplay", () => {
         providerLookup: noProviderLookup,
       });
       expect(result.modeLabel).toBe("modal-sandbox");
-      expect(result.typeLabel).toBe("modal-sandbox · Remote");
       expect(result.providerLabel).toBe("modal-sandbox");
     });
 
@@ -165,7 +160,6 @@ describe("formatEnvironmentDisplay", () => {
       });
       expect(result.providerLabel).toBeNull();
       expect(result.modeLabel).toBe("Working remotely");
-      expect(result.typeLabel).toBe("Remote");
     });
   });
 

@@ -32,7 +32,6 @@ export interface EnvironmentDisplayNameSource {
 export interface EnvironmentDisplayInfo {
   modeLabel: string;
   compactModeLabel: string;
-  typeLabel: string;
   providerLabel: string | null;
   lifecycle: "provisioning" | "destroyed" | null;
   id: string;
@@ -112,10 +111,6 @@ export function formatEnvironmentDisplay({
   return {
     modeLabel: environment.name ?? lifecycleLabel ?? namedLabel,
     compactModeLabel: environment.name ?? lifecycleLabel ?? namedCompactLabel,
-    typeLabel:
-      providerLabel === null
-        ? localityLabel
-        : `${providerLabel} · ${localityLabel}`,
     providerLabel,
     lifecycle,
     id: environment.id,
