@@ -266,7 +266,7 @@ describe("resolveEnvironmentDisplayName", () => {
     ).toBe("bb/feature");
   });
 
-  it("names a branchless row by its folder before its provider", () => {
+  it("names a branchless provider row by its provider, not its workspace folder", () => {
     expect(
       resolveEnvironmentDisplayName(
         {
@@ -284,7 +284,10 @@ describe("resolveEnvironmentDisplayName", () => {
           },
         },
       ),
-    ).toBe("thr_k72wqg7tcs");
+    ).toBe("Personal workspace");
+  });
+
+  it("hides a workspace folder that is only an internal instance key", () => {
     expect(
       resolveEnvironmentDisplayName(
         {
@@ -293,8 +296,33 @@ describe("resolveEnvironmentDisplayName", () => {
           path: "C:\\bb\\workspaces\\thr_win",
           environmentProviderId: "personal-workspace",
         },
+        loadingProviderLookup,
+      ),
+    ).toBeNull();
+  });
+
+  it("names a provider-less directory attachment by its folder", () => {
+    expect(
+      resolveEnvironmentDisplayName(
+        {
+          name: null,
+          branchName: null,
+          path: "/Users/bb/Projects/notes/",
+          environmentProviderId: null,
+        },
         noProviderLookup,
       ),
-    ).toBe("thr_win");
+    ).toBe("notes");
+    expect(
+      resolveEnvironmentDisplayName(
+        {
+          name: null,
+          branchName: null,
+          path: "C:\\Users\\bb\\notes",
+          environmentProviderId: null,
+        },
+        noProviderLookup,
+      ),
+    ).toBe("notes");
   });
 });

@@ -61,7 +61,7 @@ export function resolveEnvironmentProviderLabel(
     : lookup.provider.displayName;
 }
 
-export function resolveWorkspaceFolderName(
+function resolveWorkspaceFolderName(
   workspacePath: string | null,
 ): string | null {
   if (workspacePath === null) return null;
@@ -76,8 +76,9 @@ export function resolveEnvironmentDisplayName(
   return (
     source.name ??
     source.branchName ??
-    resolveWorkspaceFolderName(source.path) ??
-    resolveEnvironmentProviderLabel(source.environmentProviderId, lookup)
+    (source.environmentProviderId === null
+      ? resolveWorkspaceFolderName(source.path)
+      : resolveEnvironmentProviderLabel(source.environmentProviderId, lookup))
   );
 }
 
