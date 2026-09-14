@@ -403,7 +403,6 @@ async function createPendingThreadAndAttemptFirstDispatch(
       args.request,
       executionPlanArgs,
     );
-
     const startContext: PendingThreadStartContext = {
       environmentIntent: args.environmentIntent,
       fork: args.fork?.descriptor ?? null,
@@ -440,6 +439,7 @@ async function createPendingThreadAndAttemptFirstDispatch(
       },
       source: { kind: "inline" },
       queuePayload: { kind: "inline" },
+      pluginSubmission: args.request.pluginSubmission ?? null,
       startContext,
       executionDefaults: executionPlanArgs,
       origin: args.request.origin,

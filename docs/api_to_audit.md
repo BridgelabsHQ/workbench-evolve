@@ -2586,47 +2586,37 @@ providers need, the 50-image boundary is appropriate, and local image access
 should remain governed by the thread dispatch validator rather than an earlier
 plugin-specific check.
 
-## `useComposer().experimental_submit` (`@get-bb/plugin-sdk/app`)
+## `useComposer().experimental_submit` and dispatch `experimental_submission`
 
 **What it does.** Runs the composer's own submit pipeline with the draft that
-is on screen, queueing the result until `sendAt` instead of dispatching it.
-In a thread composer that is a queued row waiting on the clock; in the
-new-thread composer the thread is created `pending` and its first message is
-the queued row, so nothing provisions until the row comes due. The point is
-that everything the user selected travels with the
-submission — attachments, @-mentions, and for a create the provider, model,
-reasoning level, service tier, permission mode and environment — none of
-which is reachable from a plugin backend, so a
-plugin-issued `threads.send`/`threads.spawn` would silently schedule a
-different message from the one being composed. Backed host-side by an optional
-`submit` on the internal `PluginComposerHost`, supplied by the thread
-composer (`ThreadDetailPromptArea`) and the new-thread composer
-(`NewThreadComposer`) and omitted everywhere else. Rejects with a
-user-presentable message when the composer refuses; request failures reject
-too, after the host has restored the draft. Sole consumer:
-`plugins/scheduled-send`.
+is on screen, preserving attachments, @-mentions, and the execution and
+environment choices visible in a new-thread composer. `sendAt` schedules the
+submission. `experimental_data` carries opaque JSON to every message dispatch
+hook on the initial attempt in an `experimental_submission` envelope containing
+the calling plugin's id. Core validates JSON but does not persist or interpret
+it. Hooks run before operational core waits; a plugin-authored wait persists
+its owner through the queued row's existing `waitingOn` value. Backed host-side
+by an optional `submit` on the internal
+`PluginComposerHost`, supplied by the thread and new-thread composers. Rejects
+with a user-presentable message when the composer cannot submit and restores
+the draft after request failure. Consumers: `plugins/scheduled-send` and
+`plugins/drafts`.
 
 **Audit before stabilizing.**
 
-1. **Options is a one-field object with no "submit now" arm.** `sendAt` is
-   required, so the method can only schedule. That is deliberate — an
-   unconditional "send the user's draft" capability is a much larger surface
-   than scheduling needs — but confirm the shape before a second option
-   (`mode`, `senderThreadId`, a queue hint) has to be added, because adding one
-   makes `sendAt` optional and re-opens the "submit now" question.
+1. **Programmatic send authority.** `experimental_data` permits an immediate
+   submission without `sendAt`. Confirm which composer customizations should
+   receive that authority before stabilization.
 2. **Two of four scopes are unsupported.** A queued-message editor and a side
    chat have no `submit`, and the route-draft fallback (a plugin surface
    mounted outside any composer) has none either. All three reject with the
-   same "cannot schedule a submission" message, so a plugin cannot tell
+   same "cannot submit programmatically" message, so a plugin cannot tell
    "unsupported here" from "no composer mounted". Decide whether
    `ComposerView` should advertise submit capability so a `+` menu row can
    disable itself instead of failing on click.
-3. **Double error reporting on the create path.** A failed scheduled _send_
-   is reported only through the rejection (`useSendThreadMessage` sets
-   `showErrorToast: false`). A failed scheduled _create_ is also toasted by
-   the create mutation's default error handling, so the user sees the reason
-   twice — once in the plugin's picker and once in a toast. Decide whether the
-   host should suppress its toast for programmatic submissions.
+3. **Data visibility.** Every dispatch hook sees the envelope and its owner id,
+   not only the plugin that submitted it. Confirm that dispatch hooks remain
+   the right trust boundary for plugin-owned submission data.
 4. **Freshness of `sendAt`.** The host rejects a non-future `sendAt` at
    call time and the server accepts any non-negative timestamp, dispatching a
    past one inline at once. The only guard against a time that goes stale
@@ -2637,13 +2627,11 @@ too, after the host has restored the draft. Sole consumer:
    a plugin cannot address the queued row it just created (to edit or delete
    it) without listing the thread's queue. Confirm whether the queued message
    id belongs in the result.
-6. **`NewThreadRequest.sendAt`.** The same field is now visible to plugins
-   hosting `experimental_NewThreadComposer`: a scheduled submission there
-   reaches the plugin's `onSubmit` carrying `sendAt`, which the plugin must
-   forward to `threads.spawn`. A plugin that reconstructs the spawn request
-   field-by-field instead of forwarding it will drop the schedule silently.
-   Confirm that forwarding expectation is documented well enough, or make the
-   composer refuse to schedule when it is plugin-hosted.
+6. **Plugin-hosted new-thread composers.** `sendAt` reaches a hosting plugin's
+   `onSubmit` and must be forwarded. The opaque submission envelope is currently
+   a core-host detail and is not part of `NewThreadRequest`, so another plugin's
+   `experimental_data` can be lost in that surface. Decide whether to expose a
+   forwardable experimental field or reject data-bearing submissions there.
 
 ## Desktop browser control
 

@@ -555,7 +555,12 @@ export function RootComposeView() {
             });
       if (createRequest === null) return;
       const thread = await createThread.mutateAsync(
-        sendAt === undefined ? createRequest : { ...createRequest, sendAt },
+        sendAt === undefined
+          ? createRequest
+          : {
+              ...createRequest,
+              ...(sendAt === undefined ? {} : { sendAt }),
+            },
       );
       setLastCreatedThreadId(thread.id);
       setForkSeed(null);

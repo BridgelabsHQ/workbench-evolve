@@ -161,9 +161,7 @@ describe("queuedMessageWaitIcon", () => {
     expect(icon({ kind: "provisioning" })).toBe("Folder");
     expect(icon({ kind: "host-offline", hostName: "M4" })).toBe("CloudOff");
     expect(icon({ kind: "interaction" })).toBe("CircleQuestion");
-    expect(icon({ kind: "plugin", pluginId: "p", reason: "r" })).toBe(
-      "Limitation",
-    );
+    expect(icon({ kind: "plugin", pluginId: "p", reason: "r" })).toBeNull();
     expect(icon({ kind: "thread-busy" })).toBeNull();
     expect(icon(null)).toBeNull();
     expect(icon({ kind: "time" }, "Host is not connected")).toBe("AlertCircle");

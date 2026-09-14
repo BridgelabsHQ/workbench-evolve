@@ -702,6 +702,7 @@ async function sendClaimedQueuedMessageForThread(
       sendNow: args.sendNow,
     },
     queuePayload: queuedMessage.payload,
+    pluginSubmission: null,
     ...(queuedMessage.payload.kind === "retry"
       ? {
           retryOf: {

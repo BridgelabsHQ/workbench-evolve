@@ -1989,7 +1989,10 @@ describe("ThreadDetailPromptArea", () => {
           screen.getByRole("button", { name: "Capture plugin host" }),
         );
         await act(async () => {
-          await mocks.pluginComposerHost?.submit?.({ sendAt: 1234567890 });
+          await mocks.pluginComposerHost?.submit?.(
+            { sendAt: 1234567890 },
+            undefined,
+          );
         });
       } else {
         fireEvent.click(
