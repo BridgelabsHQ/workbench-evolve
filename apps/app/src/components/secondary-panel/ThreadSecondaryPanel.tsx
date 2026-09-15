@@ -871,10 +871,12 @@ function ThreadSecondaryPanelContent({
         ...fixedTabs.map((fixedTab) => ({
           id: fixedTab.tab.id,
           label: fixedTab.label,
+          restoresPlacementAfterRemoval: true,
         })),
         ...visibleTabs.map((tab) => ({
           id: tab.tab.id,
           label: tab.label,
+          restoresPlacementAfterRemoval: tab.tab.kind !== "new-tab",
         })),
       ] satisfies SidebarSplitTabDescriptor[])
     : [];
