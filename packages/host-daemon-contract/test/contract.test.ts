@@ -739,6 +739,45 @@ const INTENTIONAL_OPTIONAL_HOST_DAEMON_FIELDS: Record<string, string> = {
     "turn.submit resume context may omit provider-specific built-in tool removals for providers that do not need them.",
 };
 
+describe("cache usage wire compatibility", () => {
+  it.each([
+    {},
+    { cacheReadInputTokens: 31, cacheWriteInputTokens: 9 },
+    { cacheWriteInputTokens: 0 },
+  ])("preserves legacy and reported cache fields %j", (counts) => {
+    const usage = {
+      totalTokens: 140,
+      inputTokens: 80,
+      cachedInputTokens: 40,
+      outputTokens: 20,
+      reasoningOutputTokens: 0,
+      ...counts,
+    };
+    const batch = {
+      sessionId: "session-usage",
+      eventGroups: [
+        {
+          threadId: "thread-usage",
+          events: [
+            {
+              type: "thread/tokenUsage/updated",
+              threadId: "thread-usage",
+              providerThreadId: "provider-usage",
+              scope: turnScope("turn-usage"),
+              tokenUsage: {
+                total: usage,
+                last: usage,
+                modelContextWindow: null,
+              },
+            },
+          ],
+        },
+      ],
+    };
+    expect(hostDaemonEventBatchRequestSchema.parse(batch)).toEqual(batch);
+  });
+});
+
 describe("host-daemon local schemas", () => {
   it("parses workspace open target routes", () => {
     expect(
