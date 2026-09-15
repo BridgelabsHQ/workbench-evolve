@@ -2154,6 +2154,39 @@ describe("DesktopBrowserViewManager", () => {
     },
   );
 
+  it.each(["guest", "releaseWindow", "destroyAll"] as const)(
+    "cleans up through %s after the host is destroyed",
+    (operation) => {
+      const { manager, hostWindow, view } = createRendererRecoveryFixture(91);
+      const onTabsChanged = vi.fn();
+      manager.subscribeAutomationTabs(onTabsChanged);
+      hostWindow.destroyed = true;
+      hostWindow.webContents.destroyed = true;
+      Object.defineProperty(hostWindow.webContents, "id", {
+        get: () => {
+          throw new TypeError("Object has been destroyed");
+        },
+      });
+
+      expect(() => {
+        if (operation === "guest") view.webContents.close();
+        if (operation === "releaseWindow") manager.releaseWindow(91);
+        if (operation === "destroyAll") manager.destroyAll();
+      }).not.toThrow();
+      expect(
+        manager.getAutomationTabs({
+          hostWebContentsId: 91,
+          threadId: "thread-1",
+        }),
+      ).toEqual([]);
+      expect(view.webContents.isDestroyed()).toBe(true);
+      expect(onTabsChanged).toHaveBeenCalledTimes(1);
+      expect(hostWindow.contentView.removedViews).toEqual([]);
+      manager.destroyAll();
+      expect(onTabsChanged).toHaveBeenCalledTimes(1);
+    },
+  );
+
   it.each(["detach", "releaseWindow", "destroyAll", "destroyed"] as const)(
     "notifies once after removing a native target through %s",
     (operation) => {

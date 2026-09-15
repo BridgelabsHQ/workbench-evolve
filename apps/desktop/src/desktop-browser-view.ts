@@ -603,9 +603,9 @@ export function createDesktopBrowserViewManager(
     entry: BrowserViewEntry,
   ): void {
     const webContents = entry.webContents;
+    const key = browserViewKey(hostWindow, tabId);
 
     webContents.on("destroyed", () => {
-      const key = browserViewKey(hostWindow, tabId);
       if (entries.get(key) === entry) {
         destroyEntry(hostWindow, key);
       }
