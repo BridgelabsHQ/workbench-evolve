@@ -241,6 +241,16 @@ describe("threadDetailPromptSubmission", () => {
     }
     expect(
       canSubmitFollowUpShortcut({
+        hasPromptDraftInput: false,
+        isFollowUpSubmitting: false,
+        isQueueMutationPending: false,
+        queuedMessageCount: 1,
+        runtimeDisplayStatus: "idle",
+        submitModeKind: "ready",
+      }),
+    ).toBe(true);
+    expect(
+      canSubmitFollowUpShortcut({
         hasPromptDraftInput: true,
         isFollowUpSubmitting: false,
         isQueueMutationPending: false,

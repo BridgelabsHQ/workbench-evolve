@@ -122,9 +122,11 @@ vi.mock("@/components/promptbox/FollowUpPromptBox", async () => {
         onAttachFiles: (files: File[]) => void | Promise<void>;
       };
       composer: {
+        canModifierSubmit: boolean;
         message: string;
         onChangeMessage: (message: string, mentions: []) => void;
         onEscape?: () => void;
+        onModifierSubmit: () => void;
         onSubmit: () => void;
         submitLabel?: string;
         submitIcon?: string;
@@ -292,6 +294,11 @@ vi.mock("@/components/promptbox/FollowUpPromptBox", async () => {
             <button type="button" onClick={composer.onSubmit}>
               Submit composer
             </button>
+            {composer.canModifierSubmit ? (
+              <button type="button" onClick={composer.onModifierSubmit}>
+                Modifier submit
+              </button>
+            ) : null}
             {composer.onEscape ? (
               <button type="button" onClick={composer.onEscape}>
                 Escape composer
@@ -1069,6 +1076,31 @@ describe("ThreadDetailPromptArea", () => {
     const composer = screen.getByTestId("composer-boundary");
     expect(stack.lastElementChild).toBe(queue);
     expect(stack.nextElementSibling).toBe(composer);
+  });
+
+  it("sends the next queued message with the modifier shortcut after a stopped thread becomes idle", async () => {
+    mocks.queuedMessages = [makeQueuedMessage()];
+
+    renderPromptArea({
+      thread: makeThread({
+        runtime: {
+          displayStatus: "idle",
+          hostReconnectGraceExpiresAt: null,
+        },
+        status: "idle",
+      }),
+    });
+
+    expect(screen.getByTestId("submit-mode").textContent).toBe("ready:");
+    fireEvent.click(screen.getByRole("button", { name: "Modifier submit" }));
+
+    await waitFor(() => {
+      expect(mocks.sendQueuedMessageMutateAsync).toHaveBeenCalledWith({
+        id: "thr_1",
+        mode: "steer",
+        queuedMessageId: "qmsg_1",
+      });
+    });
   });
 
   it("steers a queued row once a provisioning thread is ready", async () => {
