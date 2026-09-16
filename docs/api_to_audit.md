@@ -2577,6 +2577,26 @@ controls without crowding the address field, whether ordering needs a user
 preference, and whether plugins need browser instance or environment identity
 instead of resolving it server-side from the thread and tab ids.
 
+## `ExperimentalPluginBrowserToolbarActionProps.experimental_page` (`@get-bb/plugin-sdk/app`)
+
+**What it does.** Gives a Browser toolbar action script access to its tab's
+top-level document without a CDP lease. `evaluate(expression, { world })` runs
+an expression through Electron `executeJavaScript` (`main`) or in BB's isolated
+world 1717 (`isolated`, the default), awaits it, and resolves the JSON-cloned
+value. Isolated-world expressions receive `bb.postMessage(data)`, backed by a
+Browser-tab preload that exposes the bridge only to that world; messages reach
+`onMessage` listeners scoped to the calling plugin id and tab. The value is
+`null` outside the desktop app.
+
+**Audit before stabilizing.** Decide whether any enabled plugin may evaluate in
+personal-profile tabs or whether this needs a user gesture, capability grant,
+or origin allowlist. Plugins share one isolated world, so a plugin can post on
+another plugin's channel; decide whether per-plugin worlds are required.
+Confirm message size and rate bounds, subframe support, behavior during
+navigation and renderer crashes, whether `evaluate` should time out while a
+page is still loading, and whether an SDK or `bb` CLI surface is needed for
+automation outside the toolbar component.
+
 ## `PluginMentionProviderRegistration.resolve().experimental_images` (`@get-bb/plugin-sdk`)
 
 **What it does.** Lets a mention provider resolve a picked composer mention to
@@ -2588,6 +2608,14 @@ the same image paths and URLs used by ordinary prompt inputs before dispatch.
 providers need, the 50-image boundary is appropriate, and local image access
 should remain governed by the thread dispatch validator rather than an earlier
 plugin-specific check.
+
+## Composer mention removal and successful submission subscriptions
+
+`PluginComposerApi.experimental_removeMention({ provider, id })` removes all matching mentions owned by the calling plugin from the current unsent draft, deletes their label text, rebases other mentions, and preserves attachments. It does not delete server records or alter sent messages.
+
+`PluginComposerApi.experimental_onSubmitted(listener)` observes successful local thread-send, queue-create, and new-thread-create mutations in the matching composer scope. It returns an unsubscribe function; host teardown also disposes subscriptions. Failed requests, draft clearing, and editing an existing queued message do not notify. This is a local UI notification, not a cross-device server event.
+
+Before stabilization, audit side-chat and handoff scope routing, decide whether to include the submitted structured draft in notifications to distinguish annotations created while a request is pending, and verify disposal, failure restoration, mention rebasing, and callback failure isolation across every composer host.
 
 ## `useComposer().experimental_submit` and dispatch `experimental_submission`
 
