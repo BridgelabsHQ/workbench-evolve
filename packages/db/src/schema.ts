@@ -855,6 +855,41 @@ export const retainedEventOutputs = sqliteTable(
   ],
 );
 
+export const threadPruningCursors = sqliteTable(
+  "thread_pruning_cursors",
+  {
+    policy: text("policy").notNull(),
+    scope: text("scope").notNull().default(""),
+    threadId: text("thread_id").references(() => threads.id, {
+      onDelete: "cascade",
+    }),
+    version: integer("version").notNull(),
+    lastThreadId: text("last_thread_id").notNull().default(""),
+    currentThreadId: text("current_thread_id"),
+    step: integer("step").notNull().default(0),
+    sequence: integer("sequence").notNull().default(0),
+    upperSequence: integer("upper_sequence").notNull().default(0),
+    cycle: integer("cycle").notNull().default(0),
+    latestRootSequence: integer("latest_root_sequence").notNull().default(0),
+    latestContextSequence: integer("latest_context_sequence")
+      .notNull()
+      .default(0),
+    probeEventId: text("probe_event_id"),
+    probePhase: integer("probe_phase").notNull().default(0),
+    probeSequence: integer("probe_sequence").notNull().default(0),
+    probeWitnessId: text("probe_witness_id"),
+    updatedAt: integer("updated_at").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.policy, table.scope] }),
+    index("thread_pruning_cursors_thread_idx").on(table.threadId),
+    check(
+      "thread_pruning_cursors_scope_check",
+      sql`${table.scope} = coalesce(${table.threadId}, '')`,
+    ),
+  ],
+);
+
 export const maintenanceScanCursors = sqliteTable(
   "maintenance_scan_cursors",
   {
