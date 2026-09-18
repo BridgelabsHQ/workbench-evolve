@@ -9,6 +9,9 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from "react";
+import { useAtomValue, useStore } from "jotai";
+import { isMacKeyboardPlatform } from "@bb/domain";
+import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
 import { Icon } from "@bb/shared-ui/icon";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@bb/shared-ui/tooltip";
 import { cn } from "@bb/shared-ui/lib/utils";
@@ -31,6 +34,9 @@ import {
   ThreadListEmptyState,
 } from "@/components/thread/ThreadListEmptyState";
 import { getThreadRoutePath } from "@/lib/route-paths";
+import { openThreadInSplit } from "@/lib/split-layout/openThreadInSplit";
+import { splitLayoutAtom } from "@/lib/split-layout/atoms";
+import { countPanes, findPaneByContent, MAX_PANES } from "@/lib/split-layout";
 import {
   buildPaletteThreadSearchRows,
   type PaletteThreadLifecycle,
@@ -56,6 +62,9 @@ export function ThreadSearchPaletteMode({
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
   const navigate = useRouteNavigate();
+  const store = useStore();
+  const splitLayout = useAtomValue(splitLayoutAtom);
+  const isCompact = useIsCompactViewport();
   const [query, setQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [expandedGroups, setExpandedGroups] = useState<
@@ -140,6 +149,20 @@ export function ThreadSearchPaletteMode({
     !hasLoadError;
   const activeDescendantId =
     activeIndex < 0 ? undefined : `${optionIdPrefix}-${activeIndex}`;
+  const activeRow = options[activeIndex]?.row;
+  const canSplit =
+    activeRow != null &&
+    !isCompact &&
+    splitLayout !== null &&
+    findPaneByContent(splitLayout.root, {
+      kind: "thread",
+      projectId: activeRow.projectId,
+      threadId: activeRow.threadId,
+    }) === null &&
+    countPanes(splitLayout.root) < MAX_PANES;
+  const splitModifier = isMacKeyboardPlatform(navigator.platform)
+    ? "⌘"
+    : "Ctrl";
   const scrollOnNextHighlightRef = useRef(false);
   useEffect(() => {
     if (!scrollOnNextHighlightRef.current) return;
@@ -150,7 +173,7 @@ export function ThreadSearchPaletteMode({
   }, [activeIndex, options]);
 
   const selectOption = useCallback(
-    ({ row, lifecycle }: ThreadSearchOption, index: number) => {
+    ({ row, lifecycle }: ThreadSearchOption, index: number, split = false) => {
       if (row === null) {
         scrollOnNextHighlightRef.current = true;
         setExpandedGroups((current) => [...current, lifecycle]);
@@ -166,6 +189,17 @@ export function ThreadSearchPaletteMode({
                 searchMessageSeq: row.messageSeq,
                 searchThreadId: row.threadId,
               };
+        if (split) {
+          openThreadInSplit({
+            store,
+            navigate,
+            projectId: row.projectId,
+            threadId: row.threadId,
+            isCompact,
+            state,
+          });
+          return;
+        }
         navigate(
           getThreadRoutePath({
             projectId: row.projectId,
@@ -175,7 +209,7 @@ export function ThreadSearchPaletteMode({
         );
       });
     },
-    [navigate, runAfterClose],
+    [isCompact, navigate, runAfterClose, store],
   );
 
   const handleInputKeyDown = useCallback(
@@ -215,7 +249,7 @@ export function ThreadSearchPaletteMode({
         const option = options[activeIndex];
         if (option === undefined) return;
         event.preventDefault();
-        selectOption(option, activeIndex);
+        selectOption(option, activeIndex, event.metaKey || event.ctrlKey);
       }
     },
     [activeIndex, onExit, options, query.length, selectOption],
@@ -245,7 +279,11 @@ export function ThreadSearchPaletteMode({
   return (
     <PaletteShell
       activeDescendantId={activeDescendantId}
-      inputDescription="Use Escape to return to commands."
+      inputDescription={
+        canSplit
+          ? `Use ${splitModifier}+Enter to open in split. Use Escape to return to commands.`
+          : "Use Escape to return to commands."
+      }
       inputLabel="Search threads"
       inputRef={inputRef}
       listId={listId}
@@ -280,10 +318,7 @@ export function ThreadSearchPaletteMode({
               aria-labelledby={labelId}
               className="not-last:mb-2"
             >
-              <div
-                id={labelId}
-                className={PALETTE_SECTION_LABEL_CLASS}
-              >
+              <div id={labelId} className={PALETTE_SECTION_LABEL_CLASS}>
                 {result.isRecent
                   ? "Recent"
                   : lifecycle === "archived"
@@ -298,38 +333,62 @@ export function ThreadSearchPaletteMode({
                         ? `more:${lifecycle}`
                         : `${option.row.id}:${option.row.primaryText}`
                     }
-                    id={`${optionIdPrefix}-${index}`}
-                    role="option"
-                    aria-selected={index === activeIndex}
-                    aria-label={
-                      option.row !== null
-                        ? undefined
-                        : lifecycle === "archived"
-                          ? "Show more archived threads"
-                          : "Show more threads"
-                    }
                     className={cn(
-                      "flex cursor-pointer items-center rounded-md px-2 py-1.5",
-                      option.row === null
-                        ? "gap-1.5 text-xs text-subtle-foreground"
-                        : "min-h-11 gap-3 text-left text-sm",
+                      "flex min-w-0 items-center rounded-md",
                       index === activeIndex && "bg-state-hover text-foreground",
                     )}
                     onPointerMove={() => setHighlightedIndex(index)}
-                    onClick={() => selectOption(option, index)}
                   >
-                    {option.row === null ? (
-                      <>
-                        Show more
-                        <Icon
-                          name="ChevronDown"
-                          className="size-3.5"
-                          aria-hidden
-                        />
-                      </>
-                    ) : (
-                      <ThreadSearchPaletteRow row={option.row} />
-                    )}
+                    <div
+                      id={`${optionIdPrefix}-${index}`}
+                      role="option"
+                      aria-selected={index === activeIndex}
+                      aria-label={
+                        option.row !== null
+                          ? undefined
+                          : lifecycle === "archived"
+                            ? "Show more archived threads"
+                            : "Show more threads"
+                      }
+                      className={cn(
+                        "flex min-w-0 flex-1 cursor-pointer items-center rounded-md px-2 py-1.5",
+                        option.row === null
+                          ? "gap-1.5 text-xs text-subtle-foreground"
+                          : "min-h-11 gap-3 text-left text-sm",
+                      )}
+                      onClick={() => selectOption(option, index)}
+                    >
+                      {option.row === null ? (
+                        <>
+                          Show more
+                          <Icon
+                            name="ChevronDown"
+                            className="size-3.5"
+                            aria-hidden
+                          />
+                        </>
+                      ) : (
+                        <ThreadSearchPaletteRow row={option.row} />
+                      )}
+                    </div>
+                    {index === activeIndex && canSplit ? (
+                      <button
+                        type="button"
+                        aria-label="Open in split"
+                        className="mr-2 inline-flex h-7 shrink-0 items-center gap-1 rounded-sm px-1 text-xs text-subtle-foreground hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+                        onClick={() => selectOption(option, index, true)}
+                      >
+                        <span className="mr-1">Open in split</span>
+                        {[splitModifier, "↵"].map((key) => (
+                          <kbd
+                            key={key}
+                            className="min-w-4 rounded-sm bg-state-hover px-1 py-0.5 text-center font-sans font-normal text-muted-foreground"
+                          >
+                            {key}
+                          </kbd>
+                        ))}
+                      </button>
+                    ) : null}
                   </div>
                 ),
               )}

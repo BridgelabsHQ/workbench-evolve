@@ -11,6 +11,8 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { createStore, Provider } from "jotai";
+import { splitLayoutAtom } from "@/lib/split-layout/atoms";
+import { MAX_PANES, type SplitLayout } from "@/lib/split-layout";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   defaultAppSettings,
@@ -117,6 +119,11 @@ const modeState = vi.hoisted(() => ({
   searchLoading: false,
 }));
 const routeNavigateMock = vi.hoisted(() => vi.fn());
+const openThreadInSplitMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/split-layout/openThreadInSplit", () => ({
+  openThreadInSplit: openThreadInSplitMock,
+}));
 
 function expectClasses(
   element: Element | null | undefined,
@@ -305,8 +312,15 @@ function makeThread(
   };
 }
 
-function renderPalette({ compact = false }: { compact?: boolean } = {}) {
+function renderPalette({
+  compact = false,
+  layout = null,
+}: {
+  compact?: boolean;
+  layout?: SplitLayout | null;
+} = {}) {
   const store = createStore();
+  store.set(splitLayoutAtom, layout);
   const result = render(
     <Provider store={store}>
       <CompactViewportOverrideProvider isCompactViewport={compact}>
@@ -386,10 +400,161 @@ afterEach(() => {
   modeState.recentError = false;
   modeState.searchLoading = false;
   routeNavigateMock.mockReset();
+  openThreadInSplitMock.mockReset();
   window.localStorage.clear();
 });
 
 describe("CommandPalette", () => {
+  const splitLayout: SplitLayout = {
+    root: {
+      type: "pane",
+      paneId: "origin",
+      content: { kind: "thread", projectId: "project-1", threadId: "origin" },
+    },
+    focusedPaneId: "origin",
+  };
+
+  it.each(["click", "Control", "Meta"])(
+    "opens only the selected result in a split with %s",
+    async (activation) => {
+      modeState.activeRecents = [
+        makeThread("first"),
+        makeThread("second", { updatedAt: 1 }),
+      ];
+      renderPalette({ layout: splitLayout });
+      openThreadSearch();
+      await screen.findByRole("option", { name: /Title first/ });
+      fireEvent.keyDown(searchField(), { key: "ArrowDown" });
+      const button = screen.getByRole("button", { name: "Open in split" });
+      expect(
+        button.parentElement?.querySelector('[aria-selected="true"]')
+          ?.textContent,
+      ).toContain("Title second");
+      expect(button.closest('[role="option"]')).toBeNull();
+      expect(
+        screen.getAllByRole("button", { name: "Open in split" }),
+      ).toHaveLength(1);
+      expect(document.querySelector("[data-palette-footer]")).toBeNull();
+      if (activation === "click") fireEvent.click(button);
+      else
+        fireEvent.keyDown(searchField(), {
+          key: "Enter",
+          ctrlKey: activation === "Control",
+          metaKey: activation === "Meta",
+        });
+      await waitFor(() =>
+        expect(openThreadInSplitMock).toHaveBeenCalledTimes(1),
+      );
+      expect(openThreadInSplitMock).toHaveBeenCalledWith(
+        expect.objectContaining({ threadId: "second", isCompact: false }),
+      );
+      expect(routeNavigateMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["compact", "no workspace", "already open", "pane limit"])(
+    "hides the split action for %s",
+    async (reason) => {
+      modeState.activeRecents = [
+        makeThread(reason === "already open" ? "origin" : "selected"),
+      ];
+      const layout: SplitLayout =
+        reason === "pane limit"
+          ? {
+              root: {
+                type: "split",
+                dir: "row",
+                sizes: Array(MAX_PANES).fill(1 / MAX_PANES),
+                children: Array.from({ length: MAX_PANES }, (_, index) => ({
+                  type: "pane",
+                  paneId: `pane-${index}`,
+                  content: {
+                    kind: "thread",
+                    projectId: "project-1",
+                    threadId: `other-${index}`,
+                  },
+                })),
+              },
+              focusedPaneId: "pane-0",
+            }
+          : splitLayout;
+      renderPalette({
+        compact: reason === "compact",
+        layout: reason === "no workspace" ? null : layout,
+      });
+      openThreadSearch();
+      await screen.findByRole("option");
+      expect(
+        screen.queryByRole("button", { name: "Open in split" }),
+      ).toBeNull();
+    },
+  );
+
+  it("expands Show more on modifier Enter without opening a split, and hides the action for no matches", async () => {
+    modeState.searchResponse = {
+      active: {
+        total: 8,
+        results: Array.from({ length: 8 }, (_, i) => ({
+          thread: makeThread(`match-${i}`),
+          matches: [],
+        })),
+      },
+      archived: { total: 0, results: [] },
+    };
+    renderPalette({ layout: splitLayout });
+    openThreadSearch();
+    await screen.findByRole("combobox", { name: "Search threads" });
+    fireEvent.change(searchField(), { target: { value: "match" } });
+    fireEvent.keyDown(searchField(), { key: "End" });
+    expect(selectedOption()?.textContent).toContain("Show more");
+    expect(screen.queryByRole("button", { name: "Open in split" })).toBeNull();
+    fireEvent.keyDown(searchField(), { key: "Enter", metaKey: true });
+    expect(screen.getAllByRole("option")).toHaveLength(8);
+    expect(openThreadInSplitMock).not.toHaveBeenCalled();
+    modeState.searchResponse = {
+      active: { total: 0, results: [] },
+      archived: { total: 0, results: [] },
+    };
+    fireEvent.change(searchField(), { target: { value: "missing" } });
+    await screen.findByText("No matching threads");
+    expect(screen.queryByRole("button", { name: "Open in split" })).toBeNull();
+  });
+
+  it("preserves archived message anchors for split opening", async () => {
+    modeState.searchResponse = {
+      active: { total: 0, results: [] },
+      archived: {
+        total: 1,
+        results: [
+          {
+            thread: makeThread("archived-message", { archivedAt: Date.now() }),
+            matches: [
+              {
+                sourceKind: "user_message",
+                text: "matching message",
+                sourceSeq: 42,
+                highlightRanges: [{ start: 0, end: 8 }],
+              },
+            ],
+          },
+        ],
+      },
+    };
+    renderPalette({ layout: splitLayout });
+    openThreadSearch();
+    await screen.findByRole("combobox", { name: "Search threads" });
+    fireEvent.change(searchField(), { target: { value: "matching" } });
+    fireEvent.keyDown(searchField(), { key: "Enter", metaKey: true });
+    await waitFor(() => expect(openThreadInSplitMock).toHaveBeenCalledTimes(1));
+    expect(openThreadInSplitMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        threadId: "archived-message",
+        state: { searchMessageSeq: 42, searchThreadId: "archived-message" },
+      }),
+    );
+    expect(routeNavigateMock).not.toHaveBeenCalled();
+  });
+
   it.each(["commands", "threads"])(
     "runs an available shortcut from %s even with no matches, after closing and restoring focus",
     async (mode) => {
@@ -991,7 +1156,7 @@ describe("CommandPalette", () => {
     expect(more.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
     for (let index = 0; index < 3; index++)
       fireEvent.keyDown(input, { key: "ArrowDown" });
-    expectClasses(more, "bg-state-hover", "text-foreground");
+    expectClasses(more.parentElement, "bg-state-hover", "text-foreground");
     expect(input.getAttribute("aria-activedescendant")).toBe(more.id);
     fireEvent.keyDown(input, { key: "Enter" });
     expect(within(activeGroup).getAllByRole("option")).toHaveLength(8);
