@@ -102,8 +102,6 @@ Read the installed declarations for exact current signatures.
 - `PluginAgentConfigurationContext`
 - `PluginAgentToolContentPart`
 - `PluginAgentToolContext`
-- `PluginAgentToolLabels`
-- `PluginAgentToolPresentation`
 - `PluginAgentToolRegistrationBase`
 - `PluginAgentToolResult`
 - `PluginAgentToolSelection`
@@ -132,10 +130,8 @@ Read the installed declarations for exact current signatures.
 - `PluginCodeThemeTokenRule`
 - `PluginAppCommands`
 - `PluginCommandContext`
-- `PluginCommandPaletteActionContext` (deprecated alias)
 - `PluginCommandShortcut`
 - `PluginCommandRegistration`
-- `PluginCommandPaletteActionRegistration` (deprecated alias)
 - `PluginComposerApi`
 - `PluginComposerMention`
 - `PluginComposerScope`
@@ -159,6 +155,7 @@ Read the installed declarations for exact current signatures.
 - `PluginHttpAuthMode`
 - `PluginHttpHandler`
 - `PluginInteractionCancelReason`
+- `PluginInteractionDescription`
 - `PluginInteractionRequest`
 - `PluginInteractionResult`
 - `PluginKvStorage`
@@ -207,6 +204,8 @@ Read the installed declarations for exact current signatures.
 - `PluginProvidersState`
 - `PluginRealtime`
 - `PluginRealtimeConnectionState`
+- `PluginRowLabels`
+- `PluginRowPresentation`
 - `PluginRpc`
 - `PluginRpcCallArgs`
 - `PluginRpcClient`

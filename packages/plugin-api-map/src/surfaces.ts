@@ -219,9 +219,9 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         summary:
           "Pauses an agent mid-turn to ask the person a question, and hands their answer back to the agent. With this, a plugin can:",
         bullets: [
-          "Replace the prompt box with a form while the agent waits for an answer",
+          "Replace the prompt box with a form the plugin draws, even after the agent's turn has ended",
           "Receive the submitted answer, or a cancellation and its reason",
-          "Supply the component that draws the form",
+          "Leave a row in the thread timeline: the plugin names its header and describes what a submission shows, so the transcript keeps exactly what the plugin chooses",
         ],
         apiSymbols: ["PluginUi", "PluginPendingInteractionRegistration"],
         firstParty: ["Ask User Question", "Secrets"],

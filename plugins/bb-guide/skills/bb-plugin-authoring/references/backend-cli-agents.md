@@ -53,16 +53,36 @@ implementations: the docs plugin's pull/push sync and the
 tasks plugin's attachment commands. `node:fs` remains correct for genuinely
 server-local data such as files under the plugin's own data directory.
 
-### bb.ui.requestInput — replace the composer with a blocking plugin form
+### bb.ui.requestInput — show a form in the thread composer
 
 Use `bb.ui.requestInput({ threadId, rendererId, title, payload, timeoutMs? },
-{ signal? })` when plugin backend code must wait for sensitive or structured
-user input. The promise resolves to `{ outcome: "submitted", value }` or
-`{ outcome: "cancelled", reason }`. Payloads and responses are JSON values
-capped at 64 KiB; response values are delivered only to the waiting plugin
-invocation and are never persisted. Pair `rendererId` with a frontend
-`pendingInteraction` slot. Pass a CLI handler's `ctx.signal` so disconnecting
-the caller cancels the request.
+{ signal? })` for sensitive or structured user input. Pair `rendererId` with a
+frontend `pendingInteraction` slot. The promise resolves to
+`{ outcome: "submitted", value }` or `{ outcome: "cancelled", reason }`.
+Payloads and responses are JSON values capped at 64 KiB.
+
+Two optional fields control the form's timeline row:
+
+- `presentation: PluginRowPresentation` sets labels, icon, and styling.
+  Defaults are "Waiting for <title>" / "Submitted <title>" and the plugin's
+  branding glyph.
+- `describeSubmission(value)` returns a `PluginInteractionDescription` with
+  optional `title`, Markdown `detail`, and `payload`. The payload goes to the
+  plugin's `experimental_timelineRenderer` for `"<pluginId>/<rendererId>"`.
+  Only this description is saved as submission history; omit secrets.
+  The callback runs once per submission, never on cancellation. If it throws
+  or exceeds two seconds, the row keeps its completed label.
+
+Inside a tool's `execute`, opening a form returns a waiting notice to the
+agent while the plugin continues awaiting the answer. BB delivers the tool's
+eventual result separately: success resumes an active or idle agent; errors
+only reach an active agent.
+
+Pass `ctx.signal` to cancel the form with its caller. For CLI commands,
+disconnection cancels it. For tools, request cancellation aborts the signal
+until a form opens; afterward, only thread stop/delete or plugin disposal
+aborts it. For tools that never open a form, request cancellation still aborts
+`ctx.signal`.
 
 ### bb.agents — native tools and conditional session configuration
 
