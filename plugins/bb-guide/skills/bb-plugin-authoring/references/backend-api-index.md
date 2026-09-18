@@ -9,6 +9,9 @@ Read the installed declarations for exact current signatures.
 - `PLUGIN_CLI_OUTPUT_MAX_BYTES`
 - `defineRpcContract`
 - `experimental_defineHostEntry`
+- `defineCli`
+- `cliCommand`
+- `PluginCliError`
 - `BbContext`
 - `BbNavigate`
 - `BbPluginApi`
@@ -119,12 +122,27 @@ Read the installed declarations for exact current signatures.
 - `PluginBbSdk` — `bb.sdk`; thread plugin metadata calls default `pluginId`
   (see backend-sdk.md)
 - `PluginCli`
+- `PluginCliBooleanOption`
+- `PluginCliCommand`
 - `PluginCliCommandInfo`
+- `PluginCliConstraint`
 - `PluginCliContext`
+- `PluginCliDurationOption`
+- `PluginCliDurationUnit`
+- `PluginCliEnumOption`
+- `PluginCliErrorCode`
 - `PluginCliExecutionResult`
+- `PluginCliIntegerOption`
+- `PluginCliOption`
+- `PluginCliOptionValues`
 - `PluginCliOutputLimitError`
+- `PluginCliPositional`
+- `PluginCliPositionalValues`
 - `PluginCliRegistration`
 - `PluginCliResult`
+- `PluginCliRunInput`
+- `PluginCliSpec`
+- `PluginCliStringOption`
 - `PluginCodeThemeData`
 - `PluginCodeThemeState`
 - `PluginCodeThemeTokenRule`

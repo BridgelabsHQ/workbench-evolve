@@ -3051,6 +3051,7 @@ export function normalizeCliRegistration(
   name: string;
   summary: string;
   commands: PluginCliCommandInfo[];
+  rendersHelp: boolean;
   run: PluginCliRegistration["run"];
 } {
   if (alreadyRegistered) {
@@ -3098,6 +3099,7 @@ export function normalizeCliRegistration(
     name,
     summary: registration.summary,
     commands: validatedCommands,
+    rendersHelp: registration.rendersHelp === true,
     run: registration.run.bind(registration),
   };
 }

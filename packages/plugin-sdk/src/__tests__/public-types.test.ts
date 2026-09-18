@@ -185,6 +185,30 @@ const EXPECTED_HOST_ROOT_VALUE_EXPORTS = [
   "experimental_defineHostEntry",
 ] as const;
 
+const EXPECTED_CLI_SPEC_ROOT_TYPE_EXPORTS = [
+  "PluginCliBooleanOption",
+  "PluginCliCommand",
+  "PluginCliConstraint",
+  "PluginCliDurationOption",
+  "PluginCliDurationUnit",
+  "PluginCliEnumOption",
+  "PluginCliErrorCode",
+  "PluginCliIntegerOption",
+  "PluginCliOption",
+  "PluginCliOptionValues",
+  "PluginCliPositional",
+  "PluginCliPositionalValues",
+  "PluginCliRunInput",
+  "PluginCliSpec",
+  "PluginCliStringOption",
+] as const;
+
+const EXPECTED_CLI_SPEC_ROOT_VALUE_EXPORTS = [
+  "PluginCliError",
+  "cliCommand",
+  "defineCli",
+] as const;
+
 function namesFromMatches(source: string, pattern: RegExp): string[] {
   return Array.from(source.matchAll(pattern), (match) => match[1]).sort();
 }
@@ -286,6 +310,39 @@ describe("backend plugin SDK public surface", () => {
       expect(rootTypeExports.has(exportName), exportName).toBe(true);
     }
     for (const exportName of EXPECTED_RPC_ROOT_VALUE_EXPORTS) {
+      expect(rootValueExports.has(exportName), exportName).toBe(true);
+    }
+  });
+
+  it("keeps every declarative CLI export in the root declaration bundle", async () => {
+    const [cliSpec, declarations] = await Promise.all([
+      readFile(new URL("../cli-spec.ts", import.meta.url), "utf8"),
+      readFile(
+        new URL("../../bundled-types/bb-plugin-sdk.d.ts", import.meta.url),
+        "utf8",
+      ),
+    ]);
+    const declaredTypes = namesFromMatches(
+      cliSpec,
+      /^export (?:interface|type) ([A-Za-z0-9_]+)/gmu,
+    );
+    const declaredValues = namesFromMatches(
+      cliSpec,
+      /^export (?:class|const|function) ([A-Za-z0-9_]+)/gmu,
+    );
+    expect(declaredTypes).toEqual(
+      [...EXPECTED_CLI_SPEC_ROOT_TYPE_EXPORTS].sort(),
+    );
+    expect(declaredValues).toEqual(
+      [...EXPECTED_CLI_SPEC_ROOT_VALUE_EXPORTS].sort(),
+    );
+
+    const rootTypeExports = rootExportNames(declarations, "type");
+    const rootValueExports = rootExportNames(declarations, "value");
+    for (const exportName of EXPECTED_CLI_SPEC_ROOT_TYPE_EXPORTS) {
+      expect(rootTypeExports.has(exportName), exportName).toBe(true);
+    }
+    for (const exportName of EXPECTED_CLI_SPEC_ROOT_VALUE_EXPORTS) {
       expect(rootValueExports.has(exportName), exportName).toBe(true);
     }
   });
