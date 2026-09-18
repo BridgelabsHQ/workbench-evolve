@@ -16,7 +16,6 @@ import {
 } from "@/lib/bb-desktop";
 import { RootComposeCompactHome } from "./RootComposeCompactHome";
 import { useOptionalPaneContext } from "./thread-detail/PaneContext";
-import { getCompactPanelPresentation } from "@/components/secondary-panel/panelToggleControlState";
 
 const ROOT_COMPOSE_MAX_WIDTH_CLASS = "max-w-[760px]";
 
@@ -148,12 +147,7 @@ export function RootComposeSecondaryContent({
         mainPanelId="root-compose-main-panel"
         main={mainContent}
         composerHost={composerHost}
-        compactPresentation={getCompactPanelPresentation(
-          threadSecondaryPanelProps.activeTab?.kind,
-          threadSecondaryPanelProps.fixedTabs[0]?.tab.kind ??
-            threadSecondaryPanelProps.tabs.find((tab) => tab.isHidden !== true)
-              ?.tab.kind,
-        )}
+        compactPresentation="full"
         renderPanel={({
           presentation,
           canShowNativeBrowserView,
