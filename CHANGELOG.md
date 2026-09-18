@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.43.2
+## 0.43.3
 
 Save messages as drafts, annotate pages for your agent, and watch browser automation live in chat. This release also redesigns handoffs and improves everyday navigation, configuration across machines, and conversation performance.
 
