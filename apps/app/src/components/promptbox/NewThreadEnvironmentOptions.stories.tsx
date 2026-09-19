@@ -68,6 +68,7 @@ function EnvironmentOptionsStrip({
           projectless={projectless}
           selectedProviderHostId={HOST_IDS.local}
           onSelectProvider={noop}
+          onSelectReuse={noop}
           muted
           modal={false}
           {...environment}
@@ -157,16 +158,6 @@ export function Overview() {
           hint="reuse mode before picking a worktree"
         >
           <EnvironmentOptionsStrip environment={{ value: "reuse" }} />
-        </StoryRow>
-        <StoryRow
-          label="project · reuse unavailable"
-          hint="environment row disabled in menu"
-        >
-          <EnvironmentOptionsStrip
-            environment={{
-              value: `host:${HOST_IDS.local}:local`,
-            }}
-          />
         </StoryRow>
         <StoryRow
           label="no project · allowed"
