@@ -1197,7 +1197,7 @@ retries structured provider overloads with exponential backoff and jitter.
 Prior output or tool activity does not block recovery. If the provider accepted
 the failed input, core sends an agent-only continuation; if it rejected the
 input before starting, core re-sends the original message as agent-only. Disable
-the plugin under Settings → Installed plugins or with
+the plugin under Plugins → Installed plugins or with
 `bb plugin disable provider-retry`.
 
 It never blocks a send. A remembered rate limit is a stale picture of the
@@ -1227,7 +1227,7 @@ nothing, because waiting does not fix them.
 ### Workflows plugin
 
 The builtin Workflows plugin is disabled on fresh installations. Enable it
-under Settings → Installed plugins or with `bb plugin enable workflows`. Its six
+under Plugins → Installed plugins or with `bb plugin enable workflows`. Its six
 settings are bounded integers, edited with numeric inputs under Plugins →
 Installed plugins or with `bb plugin config workflows set <key> <value>`:
 
@@ -1417,7 +1417,13 @@ For isolated development smoke tests only, `DEV_BROWSER_SMOKE_BINARY` selects th
 
 ## Agent guidance plugin settings
 
-BB guide is installed and enabled by default. In Settings → Installed plugins
+Settings → Plugins lists every installed plugin, including disabled plugins and
+plugins without configuration. Selecting a plugin always opens Details.
+Configure opens its configuration in place when available; Back to details
+returns to the same plugin. Existing direct configuration links still open
+Configuration.
+
+BB guide is installed and enabled by default. In Settings → Plugins
 → BB guide, `introduction` controls the BB introduction, `skills` controls all
 four bundled skills, and `bbCli`, `pluginAuthoring`, `skillCreator`, and `submitPlugin` control
 individual skills. All default to true. Disabling BB guide removes its
