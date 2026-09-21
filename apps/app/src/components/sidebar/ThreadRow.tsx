@@ -393,6 +393,10 @@ function ThreadRowComponent({
     SIDEBAR_HOVER_ACTIONS_ROW_CLASS,
     "group/thread-row cursor-pointer",
     SIDEBAR_ROW_BASE_CLASS,
+    !shortcut &&
+      parentOptions &&
+      hasChildren &&
+      "gap-0.5 max-md:pointer-coarse:gap-2",
     LIST_HOVER_TRANSITION,
     parentOptions?.stickyLevel === undefined && "relative",
     options.isCompact
@@ -509,10 +513,13 @@ function ThreadRowComponent({
         className={cn(
           "flex min-w-0 flex-1 items-center gap-1.5",
           !shortcut &&
+            parentOptions &&
+            hasChildren &&
+            "gap-0.5 max-md:pointer-coarse:gap-1.5",
+          !shortcut &&
             !isEditing &&
-            (parentOptions && hasChildren
-              ? "pr-7.5 max-md:pointer-coarse:pr-0"
-              : SIDEBAR_HOVER_ACTIONS_INSET_CLASS),
+            !(parentOptions && hasChildren) &&
+            SIDEBAR_HOVER_ACTIONS_INSET_CLASS,
         )}
       >
         {isEditing ? (
@@ -521,13 +528,34 @@ function ThreadRowComponent({
           </span>
         ) : (
           <span
-            className="bb-thread-title"
+            className={cn(
+              "bb-thread-title",
+              !shortcut &&
+                parentOptions &&
+                hasChildren &&
+                "md:flex-1 pointer-fine:flex-1",
+            )}
             title={labelTitle}
             onDoubleClick={startTitleEditing}
           >
             <ThreadTitleMentions title={threadTitle} />
           </span>
         )}
+        {!shortcut && !isEditing && parentOptions && hasChildren ? (
+          <span
+            data-sidebar-hover-actions-open={isActionsOpen ? "true" : undefined}
+            className={cn(
+              SIDEBAR_HOVER_ACTIONS_CLASS,
+              "relative z-10 shrink-0 max-md:pointer-coarse:hidden",
+            )}
+            onPointerDown={(event) => event.stopPropagation()}
+          >
+            <ThreadArchiveQuickAction
+              thread={thread}
+              className={SIDEBAR_CONTROL_BUTTON_CLASS}
+            />
+          </span>
+        ) : null}
         {parentOptions && hasChildren ? (
           <SidebarChildToggleChevron
             disabled={isEditing}
@@ -606,10 +634,12 @@ function ThreadRowComponent({
               >
                 <SidebarRowControls
                   primaryAction={
-                    <ThreadArchiveQuickAction
-                      thread={thread}
-                      className={SIDEBAR_CONTROL_BUTTON_CLASS}
-                    />
+                    parentOptions && hasChildren ? null : (
+                      <ThreadArchiveQuickAction
+                        thread={thread}
+                        className={SIDEBAR_CONTROL_BUTTON_CLASS}
+                      />
+                    )
                   }
                 >
                   <ThreadActionsMenu
