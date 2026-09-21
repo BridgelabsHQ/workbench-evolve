@@ -36,7 +36,15 @@ export function ComposerSendMenu({
   const view = useOptionalPluginComposerView();
   const contributions = useResolvedComposerPlusMenuItems(
     includePluginContributions ? (view?.scope.kind ?? null) : null,
-  ).filter((contribution) => contribution.item.experimental_sendMenu === true);
+  ).filter(
+    ({ pluginId, customizationId, item }) =>
+      (pluginId === "drafts" &&
+        customizationId === "drafts" &&
+        item.id === "drafts") ||
+      (pluginId === "scheduled-send" &&
+        customizationId === "send-later" &&
+        item.id === "send-later"),
+  );
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
