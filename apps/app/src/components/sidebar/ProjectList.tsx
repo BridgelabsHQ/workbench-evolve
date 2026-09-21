@@ -59,7 +59,7 @@ import {
   type ProjectThreadNode,
 } from "@bb/client-core";
 import { useSectionThreadDnd } from "./useSectionThreadDnd";
-import { useRenderedSectionThreadDnd } from "./useRenderedSectionThreadDnd";
+import { useNestDropPreview } from "./useNestDropPreview";
 import { getRootComposeRoutePath } from "@/lib/route-paths";
 import { getThreadDisplayTitle } from "@/lib/thread-title";
 import { getMutationErrorMessage } from "@/lib/mutation-errors";
@@ -637,13 +637,10 @@ function useGroupedModeThreadDnd({
     pinnedRootNodes: pinned.pinnedRootNodes,
     onReorderPinnedThread: pinned.onReorderPinnedThread,
   });
-  return useRenderedSectionThreadDnd({
+  return useNestDropPreview({
     compareThreads,
     draftThreadIds,
-    groups: true,
     pinnedRootNodes: pinned.pinnedRootNodes,
-    pinnedThreads: pinned.pinnedThreads,
-    rootItems,
     sectionDnd: threadDnd,
     sections: EMPTY_SECTION_DEFINITIONS,
     threads,
@@ -1400,6 +1397,7 @@ export function MachineModeSections({
                   onToggleCollapsed: () => toggleMachineCollapsed(section.key),
                 }}
                 consumeClickSuppression={consumeClickSuppression}
+                dropParentKey={sectionId}
               >
                 <ProjectThreadTree
                   dndParentKey={sectionId}

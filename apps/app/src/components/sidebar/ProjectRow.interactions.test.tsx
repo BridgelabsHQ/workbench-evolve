@@ -17,12 +17,16 @@ import { Provider, createStore } from "jotai";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   ChronologicalSectionThreadSections,
-  DropPreviewRow,
   ProjectRow,
   SectionThreadDragOverlay,
+  ThreadTreeNodeRow,
   type ProjectThreadListState,
 } from "./ProjectRow";
-import { buildSidebarEntitySectionId } from "@bb/client-core";
+import type { SectionThreadDndState } from "./useSectionThreadDnd";
+import {
+  buildPinnedSidebarState,
+  buildSidebarEntitySectionId,
+} from "@bb/client-core";
 import { makeThreadListEntry } from "@bb/test-helpers/domain-fixtures";
 import { makeProjectResponse } from "@/test/fixtures/projects";
 import {
@@ -108,6 +112,80 @@ function makeThread(overrides: Partial<ThreadListEntry> = {}): ThreadListEntry {
     titleFallback: "Test thread",
     ...overrides,
   });
+}
+
+function makeSectionDnd(
+  overrides: Partial<SectionThreadDndState> = {},
+): SectionThreadDndState {
+  return {
+    activeItemId: null,
+    activeThread: makeThread({
+      id: "thr_dragged",
+      title: "Dragged",
+      titleFallback: "Dragged",
+    }),
+    consumeClickSuppression: () => false,
+    dndContextProps: {},
+    dragOverParentKey: null,
+    unchangedParentKey: null,
+    itemIdsByParentKey: new Map(),
+    nestTarget: null,
+    nestPreviewBeforeKey: null,
+    onClickCapture: () => undefined,
+    pinnedItemIds: [],
+    pinnedReorderPending: false,
+    reorderTarget: null,
+    ...overrides,
+  };
+}
+
+function renderPinnedParentWithChild({
+  isCollapsed,
+  sectionDnd,
+}: {
+  isCollapsed: boolean;
+  sectionDnd: SectionThreadDndState;
+}) {
+  const parent = makeThread({
+    id: "thr_parent",
+    title: "Parent",
+    titleFallback: "Parent",
+    pinnedAt: 1,
+  });
+  const child = makeThread({
+    id: "thr_child",
+    title: "Child",
+    titleFallback: "Child",
+    parentThreadId: "thr_parent",
+  });
+  const node = buildPinnedSidebarState({ threads: [parent, child] })
+    .rootNodes[0];
+  const { container } = render(
+    <TooltipProvider>
+      <Provider store={createStore()}>
+        <QueryClientProvider client={new QueryClient()}>
+          <MemoryRouter>
+            <ThreadTreeNodeRow
+              projectId="proj_test"
+              node={node}
+              depthOffset={0}
+              isEnvGrouped={false}
+              collapsedThreadIds={
+                isCollapsed ? new Set(["thr_parent"]) : new Set()
+              }
+              collapsedEnvironmentIds={new Set()}
+              variant="section"
+              onToggleThreadCollapsed={vi.fn()}
+              onToggleEnvironmentCollapsed={vi.fn()}
+              sectionDnd={sectionDnd}
+              sortableRef={() => undefined}
+            />
+          </MemoryRouter>
+        </QueryClientProvider>
+      </Provider>
+    </TooltipProvider>,
+  );
+  return container;
 }
 
 function renderProjectRow(
@@ -201,15 +279,95 @@ function CustomSectionsVisibilityProbe({
 }
 
 describe("ProjectRow interactions", () => {
-  it("renders the destination gap as a muted copy of the dragged row", () => {
-    render(<DropPreviewRow depth={0} thread={makeThread()} />);
+  it("previews the dragged thread as a child of a valid nest target", () => {
+    const container = renderPinnedParentWithChild({
+      isCollapsed: false,
+      sectionDnd: makeSectionDnd({
+        nestTarget: { threadId: "thr_parent", state: "valid" },
+        nestPreviewBeforeKey: "thread:thr_child",
+      }),
+    });
 
-    const preview = document.querySelector(
-      '[data-sidebar-section-drop-preview="true"]',
+    const rows = [
+      ...container.querySelectorAll(
+        "[data-sidebar-thread-id], [data-sidebar-nest-drop-preview]",
+      ),
+    ];
+    expect(
+      rows.map(
+        (row) => row.getAttribute("data-sidebar-thread-id") ?? row.textContent,
+      ),
+    ).toEqual(["thr_parent", "Dragged", "thr_child"]);
+  });
+
+  it("previews the dragged thread after the last child when it sorts last", () => {
+    const container = renderPinnedParentWithChild({
+      isCollapsed: false,
+      sectionDnd: makeSectionDnd({
+        nestTarget: { threadId: "thr_parent", state: "valid" },
+        nestPreviewBeforeKey: null,
+      }),
+    });
+
+    const rows = [
+      ...container.querySelectorAll(
+        "[data-sidebar-thread-id], [data-sidebar-nest-drop-preview]",
+      ),
+    ];
+    expect(
+      rows.map(
+        (row) => row.getAttribute("data-sidebar-thread-id") ?? row.textContent,
+      ),
+    ).toEqual(["thr_parent", "thr_child", "Dragged"]);
+  });
+
+  it("leaves a blocked nest target without a child preview", () => {
+    const container = renderPinnedParentWithChild({
+      isCollapsed: false,
+      sectionDnd: makeSectionDnd({
+        nestTarget: { threadId: "thr_parent", state: "blocked" },
+        nestPreviewBeforeKey: null,
+      }),
+    });
+
+    expect(
+      container.querySelector("[data-sidebar-nest-drop-preview]"),
+    ).toBeNull();
+  });
+
+  it("anchors a pinned insert line below the subtree, not between parent and child", () => {
+    const container = renderPinnedParentWithChild({
+      isCollapsed: false,
+      sectionDnd: makeSectionDnd({
+        reorderTarget: { threadId: "thr_parent", placement: "after" },
+      }),
+    });
+
+    expect(screen.getByText("Child")).not.toBeNull();
+    expect(
+      container.querySelector("[data-sidebar-reorder-placement]"),
+    ).toBeNull();
+    const group = container.querySelector<HTMLElement>(
+      "[data-sidebar-sticky-group]",
     );
-    expect(preview?.textContent).toBe("Test thread");
-    expect(preview?.className).toContain("opacity-50");
-    expect(preview?.className).not.toContain("border-dashed");
+    expect(group?.className).toContain("after:-bottom-px");
+    expect(group?.contains(screen.getByText("Child"))).toBe(true);
+  });
+
+  it("anchors a pinned insert line on the row when the subtree is collapsed", () => {
+    const container = renderPinnedParentWithChild({
+      isCollapsed: true,
+      sectionDnd: makeSectionDnd({
+        reorderTarget: { threadId: "thr_parent", placement: "after" },
+      }),
+    });
+
+    expect(screen.queryByText("Child")).toBeNull();
+    expect(
+      container
+        .querySelector("[data-sidebar-reorder-placement]")
+        ?.getAttribute("data-sidebar-reorder-placement"),
+    ).toBe("after");
   });
 
   it("renders the dragged copy as a compact opaque chip", () => {

@@ -155,12 +155,13 @@ const NEST_TARGET_STATE_CLASS: Record<SidebarNestTargetState, string> = {
   unchanged: "ring-1 ring-inset ring-sidebar-border",
 };
 
-const REORDER_PLACEMENT_CLASS: Record<SidebarReorderPlacement, string> = {
-  before:
-    "before:pointer-events-none before:absolute before:inset-x-1 before:-top-px before:h-0.5 before:rounded-full before:bg-sidebar-ring before:content-['']",
-  after:
-    "after:pointer-events-none after:absolute after:inset-x-1 after:-bottom-px after:h-0.5 after:rounded-full after:bg-sidebar-ring after:content-['']",
-};
+export const REORDER_PLACEMENT_CLASS: Record<SidebarReorderPlacement, string> =
+  {
+    before:
+      "before:pointer-events-none before:absolute before:inset-x-1 before:-top-px before:h-0.5 before:rounded-full before:bg-sidebar-ring before:content-['']",
+    after:
+      "after:pointer-events-none after:absolute after:inset-x-1 after:-bottom-px after:h-0.5 after:rounded-full after:bg-sidebar-ring after:content-['']",
+  };
 
 function getThreadRowStyle(depth: number): CSSProperties {
   return {
@@ -412,9 +413,7 @@ function ThreadRowComponent({
   );
   const rowStyle = getThreadRowStyle(options.depth);
   const parentGuideLeft =
-    options.depth > 0
-      ? getSidebarThreadGroupLineLeft(options.depth - 1)
-      : null;
+    options.depth > 0 ? getSidebarThreadGroupLineLeft(options.depth - 1) : null;
   const isActionsOpen = isDropdownActionsOpen || isContextActionsOpen;
   const handleRowClickCapture = useCallback<ThreadRowClickCaptureHandler>(
     (event) => {
@@ -449,8 +448,7 @@ function ThreadRowComponent({
                 parentGuideLeft === null
                   ? "relative"
                   : "absolute top-1/2 -translate-x-1/2 -translate-y-1/2",
-                !showActive &&
-                  "group-hover/thread-row:bg-sidebar-accent",
+                !showActive && "group-hover/thread-row:bg-sidebar-accent",
                 !showActive && isActionsOpen && "bg-sidebar-accent",
                 !showActive &&
                   splitIndicator.isOpenInSplit &&

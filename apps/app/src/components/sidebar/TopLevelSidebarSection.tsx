@@ -28,6 +28,10 @@ import {
   SIDEBAR_CONTROL_STATE_CLASS,
   SIDEBAR_GROUP_TEXT_CLASS,
 } from "./sidebarRowClasses";
+import {
+  SectionDropTargetOverlay,
+  useSectionDropTargetState,
+} from "./useSectionDropTargetState";
 import type { SidebarSortableDragBindings } from "./sortableMotion";
 import {
   NO_COLLAPSED_CHILD_ACTIVITY,
@@ -58,8 +62,7 @@ export interface TopLevelSidebarSectionProps {
   labelEditor?: ReactNode;
   onRename?: () => void;
   children: ReactNode;
-  childrenInset?: boolean;
-  showChildrenWhenCollapsed?: boolean;
+  dropParentKey?: string;
   sectionId?: string;
   stickyHeader?: boolean;
   status?: ReactNode;
@@ -82,8 +85,7 @@ export function TopLevelSidebarSection({
   labelEditor,
   onRename,
   children,
-  childrenInset = true,
-  showChildrenWhenCollapsed = false,
+  dropParentKey,
   sectionId,
   stickyHeader = true,
   status,
@@ -100,6 +102,7 @@ export function TopLevelSidebarSection({
   consumeClickSuppression,
   isDropTargetActive = false,
 }: TopLevelSidebarSectionProps) {
+  const threadDropState = useSectionDropTargetState(dropParentKey);
   const collapsedSplitIndicator = useThreadGroupSplitIndicator(
     collapsedThreads,
     collapseControl?.isCollapsed === true,
@@ -173,18 +176,21 @@ export function TopLevelSidebarSection({
       ref={sectionRef}
       style={sectionStyle}
       data-sidebar-section-id={sectionId}
+      data-sidebar-drop-target={threadDropState ?? undefined}
       data-sidebar-rename-row=""
       data-sidebar-sticky-header={stickyHeader ? undefined : "false"}
       className={cn(
-        "group/sidebar-section min-w-0 rounded-md transition-colors",
+        "group/sidebar-section relative min-w-0 rounded-md transition-colors",
         isDropTargetActive && "bg-sidebar-accent/60",
       )}
       onClickCapture={handleClickCapture}
     >
+      {threadDropState ? (
+        <SectionDropTargetOverlay state={threadDropState} />
+      ) : null}
       <SidebarStickyTier
         ref={dragBindings?.setActivatorNodeRef}
         tier="label"
-        style={childrenInset ? undefined : { marginBottom: 0 }}
         className={cn(
           SIDEBAR_HOVER_ACTIONS_ROW_CLASS,
           CHROME_SECTION_LABEL_CLASS,
@@ -287,9 +293,8 @@ export function TopLevelSidebarSection({
           </span>
         ) : null}
       </SidebarStickyTier>
-      {(collapseControl?.isCollapsed && !showChildrenWhenCollapsed) ||
-      children == null ? null : (
-        <div className={childrenInset ? "mt-1" : undefined}>{children}</div>
+      {collapseControl?.isCollapsed || children == null ? null : (
+        <div className="mt-1">{children}</div>
       )}
     </SidebarStickyGroup>
   );

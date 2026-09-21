@@ -10,10 +10,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { BbHttpError } from "@bb/sdk/browser";
-import {
-  SidebarRenameProvider,
-  useSidebarRename,
-} from "./SidebarInlineRename";
+import { SidebarRenameProvider, useSidebarRename } from "./SidebarInlineRename";
 
 afterEach(cleanup);
 
@@ -257,10 +254,16 @@ describe("sidebar inline rename", () => {
     const { rerender } = render(row());
     await start("Keep my draft");
     rerender(row("Changed elsewhere"));
-    expect(screen.getByRole("textbox")).toHaveProperty("value", "Keep my draft");
+    expect(screen.getByRole("textbox")).toHaveProperty(
+      "value",
+      "Keep my draft",
+    );
     rerender(<SidebarRenameProvider>{null}</SidebarRenameProvider>);
     rerender(row("Changed elsewhere"));
-    expect(screen.getByRole("textbox")).toHaveProperty("value", "Keep my draft");
+    expect(screen.getByRole("textbox")).toHaveProperty(
+      "value",
+      "Keep my draft",
+    );
     fireEvent.keyDown(screen.getByRole("textbox"), { key: "Escape" });
     expect(screen.getByText("Changed elsewhere")).not.toBeNull();
     expect(onSave).not.toHaveBeenCalled();

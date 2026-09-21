@@ -142,13 +142,17 @@ describe("section thread drop targets", () => {
     });
   });
 
-  it("rejects same-parent and non-thread moves", () => {
+  it("reports the thread's own section as unchanged and ignores non-thread moves", () => {
     const lookup = createLookup();
     const sectionAKey = lookup.sectionParentKeyBySectionId.get("section:a");
 
     expect(
       resolveSectionThreadDropDecision(lookup, "in-a", sectionAKey ?? null),
-    ).toBeNull();
+    ).toEqual({
+      kind: "unchanged",
+      activeId: "in-a",
+      toParentKey: sectionAKey,
+    });
     expect(
       resolveSectionThreadDropDecision(
         lookup,
@@ -623,24 +627,6 @@ describe("thread row nest collisions", () => {
         ...rect,
         top: 158,
         bottom: 186,
-      }),
-    ).toEqual([rowCollision, groupCollision]);
-  });
-
-  it("uses the initial row position after a source subtree collapses", () => {
-    const shiftedRect = {
-      ...rect,
-      top: 42,
-      bottom: 70,
-    };
-    expect(
-      resolveThreadRowNestCollisions({
-        collisions: [rowCollision, groupCollision],
-        draggedLeft: 48,
-        droppableRects: new Map([[rowId("parent-a"), shiftedRect]]),
-        fallbackRowRects: new Map([["parent-a", rect]]),
-        pointerCoordinates: { x: 20, y: 114 },
-        getBandFraction: () => NEST_BAND_FRACTION,
       }),
     ).toEqual([rowCollision, groupCollision]);
   });
