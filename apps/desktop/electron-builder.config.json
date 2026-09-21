@@ -46,14 +46,16 @@
     "icon": "assets/icon.icns",
     "identity": null,
     "notarize": false,
+    "mergeASARs": false,
+    "x64ArchFiles": "{*.node,*.bare,spawn-helper}",
     "target": [
       {
         "target": "dmg",
-        "arch": ["arm64"]
+        "arch": ["universal"]
       },
       {
         "target": "zip",
-        "arch": ["arm64"]
+        "arch": ["universal"]
       }
     ]
   },

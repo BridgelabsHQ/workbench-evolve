@@ -202,7 +202,8 @@ Report:
 ## Publish The Desktop App
 
 The npm publish does not build or publish the desktop app. The desktop release
-is a separate workflow. It builds the signed and notarized macOS app and the
+is a separate workflow. It builds the signed and notarized universal macOS app
+and the
 Linux x64 AppImage in parallel jobs, then one publish job creates the immutable
 `desktop-v<version>` GitHub release and moves the `desktop-latest` release with
 both auto-update feeds: `desktop-version.json` for macOS and

@@ -19,6 +19,9 @@ Tested npm package runtimes:
 - Node.js 24 LTS
 - Node.js 26 Current
 
+The desktop shell ships a universal macOS binary covering Apple Silicon
+(arm64) and Intel (x64), plus a Linux x64 AppImage.
+
 Newer release lines are not blocked. `install-machine.sh` gates on the 22.19
 floor only, so a release line we have not tested yet still installs rather than
 failing hard on the day it ships. The `bb-app` npm `engines` field lists the

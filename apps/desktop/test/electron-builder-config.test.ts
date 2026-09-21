@@ -36,6 +36,7 @@ const nativeModulesScript: {
     electronVersion: string;
     platform: string;
   }): string[];
+  isUniversalMachOBinary(filePath: string): boolean;
 } = require("./scripts/prepare-native-modules.cjs");
 
 const macConfigSchema = z
@@ -50,13 +51,13 @@ const macConfigSchema = z
     target: z.tuple([
       z
         .object({
-          arch: z.tuple([z.literal("arm64")]),
+          arch: z.tuple([z.literal("universal")]),
           target: z.literal("dmg"),
         })
         .passthrough(),
       z
         .object({
-          arch: z.tuple([z.literal("arm64")]),
+          arch: z.tuple([z.literal("universal")]),
           target: z.literal("zip"),
         })
         .passthrough(),
@@ -527,7 +528,7 @@ describe("electron-builder signing config", () => {
     ).resolves.toBeUndefined();
   });
 
-  it("packages macOS artifacts for arm64 only", async () => {
+  it("packages macOS artifacts as a universal binary", async () => {
     const configText = await readFile(
       resolve(desktopPackageRoot, "electron-builder.config.json"),
       "utf8",
@@ -535,10 +536,42 @@ describe("electron-builder signing config", () => {
     const config = electronBuilderConfigSchema.parse(JSON.parse(configText));
 
     expect(config.mac.target).toEqual([
-      { arch: ["arm64"], target: "dmg" },
-      { arch: ["arm64"], target: "zip" },
+      { arch: ["universal"], target: "dmg" },
+      { arch: ["universal"], target: "zip" },
     ]);
   });
+
+  it("skips asar content merging because native modules ship unpacked", async () => {
+    const configText = await readFile(
+      resolve(desktopPackageRoot, "electron-builder.config.json"),
+      "utf8",
+    );
+    const config = electronBuilderConfigSchema.parse(JSON.parse(configText));
+
+    expect(config.mac).toMatchObject({ mergeASARs: false });
+  });
+
+  it("allows identical cross-slice native binaries in the universal merge", async () => {
+    const configText = await readFile(
+      resolve(desktopPackageRoot, "electron-builder.config.json"),
+      "utf8",
+    );
+    const config = electronBuilderConfigSchema.parse(JSON.parse(configText));
+
+    expect(config.mac).toMatchObject({
+      x64ArchFiles: "{*.node,*.bare,spawn-helper}",
+    });
+  });
+
+  it.skipIf(process.platform !== "darwin")(
+    "detects universal Mach-O binaries with lipo",
+    () => {
+      expect(nativeModulesScript.isUniversalMachOBinary("/bin/ls")).toBe(true);
+      expect(nativeModulesScript.isUniversalMachOBinary(process.execPath)).toBe(
+        false,
+      );
+    },
+  );
 
   it("packages a Linux AppImage for x64", async () => {
     const configText = await readFile(
