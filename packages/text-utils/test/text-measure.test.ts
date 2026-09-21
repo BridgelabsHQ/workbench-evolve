@@ -4,9 +4,21 @@ import {
   displayWidth,
   truncateToWidth,
   truncateToWidthAtWordBoundary,
-} from "../../src/services/lib/text-measure.js";
+} from "../src/index.js";
 
 describe("text measure", () => {
+  it.each(["🇺🇸", "❤️", "✈️", "1️⃣", "⌚"])(
+    "measures %s as a two-column grapheme",
+    (emoji) => {
+      expect(displayWidth(emoji)).toBe(2);
+      expect(truncateToWidth(emoji.repeat(3), 5)).toBe(emoji.repeat(2));
+    },
+  );
+
+  it("keeps text-presentation symbols narrow", () => {
+    expect(displayWidth("❤✈1©")).toBe(4);
+  });
+
   it("counts words in scripts that do not separate them with spaces", () => {
     expect(countWords("fix the flaky login bug")).toBe(5);
     expect(
