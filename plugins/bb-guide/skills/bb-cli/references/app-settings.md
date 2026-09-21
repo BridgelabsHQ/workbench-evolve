@@ -19,6 +19,11 @@ every window and client sees the same value.
   orders, the collapsed-id lists, `sidebar.hiddenGroups`,
   `sidebar.pluginPanelOrder`, `sidebar.visiblePluginPanels`, `sidebar.navigationProvider`,
   `sidebar.threadListProvider`).
+- The built-in sidebar's Filter selects Active and Archived, defaulting to Active,
+  including threads with saved messages. This selection is browser-local, not
+  a server-backed preference or SDK/CLI setting. Selected archived rows
+  retain their hierarchy placement and offer a restore action. Archived pages load only while selected;
+  plugin sidebar replacements keep ownership of their rendering.
 - `sidebar.organizationMode` defaults to Custom (`chronological`) on new installs.
   Migrated installs with existing projects, threads, or UI preferences fall back to
   By project (`project`). Saved server choices win over legacy browser choices,
@@ -27,8 +32,8 @@ every window and client sees the same value.
   one worktree environment collapse into a single worktree row inside their
   section: `true` groups them and `false` keeps every thread on its own row, in
   every organization mode. The default `auto` groups them in By project and By
-  machine and leaves them flat in Custom. The thread-list header's Organize menu
-  exposes it under Groups as By environment. Each `sidebar.threadGrouping.*` key
+  machine and leaves them flat in Custom. Set it through Organize → Groups →
+  By environment, settings, or the CLI. Each `sidebar.threadGrouping.*` key
   toggles one grouping dimension independently.
 - `bb settings ui list [--json]` prints every key with its value, revision,
   and description; `bb settings ui get <key> [--json]` prints one.

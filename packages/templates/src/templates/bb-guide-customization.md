@@ -305,11 +305,19 @@ to By project (`project`). Explicit server choices take precedence over legacy
 browser choices, which take precedence over this installation fallback. Reset
 saves the installation fallback as an explicit choice.
 
+The built-in sidebar's Filter selects Active and Archived, defaulting to Active.
+The selection is browser-local, not a server-backed preference or SDK/CLI setting.
+Active includes threads with saved messages; there is no separate
+Drafts section or filter. Archived threads use their preserved placement and a
+restore action. Archived pages load only while selected.
+Plugin sidebar replacements own their filters.
+
 Every thread-list header's actions menu offers New project, New section,
-Organize, and Sort by. Organize selects By project, By machine, or Custom, and
-its By environment toggle decides whether sibling threads sharing one worktree
-collapse into a single worktree row inside their section, in every organization
-mode. `sidebar.threadGrouping.environment` defaults to `auto`, which groups them
+Organize, Sort by, and Filter. Organize selects By project,
+By machine, or Custom and retains Groups → By environment.
+The separate `sidebar.threadGrouping.environment` preference
+decides whether sibling threads sharing one worktree collapse into a single row.
+It defaults to `auto`, which groups them
 everywhere except Custom: `bb settings ui set sidebar.threadGrouping.environment
 false` keeps every thread on its own row, and `true` groups them in every mode.
 Sort by selects a field, and selecting it again reverses its arrow/direction.

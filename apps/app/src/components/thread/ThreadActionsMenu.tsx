@@ -347,9 +347,11 @@ function useThreadActionsMenuLifecycle(onOpenChange?: (open: boolean) => void) {
 export function ThreadArchiveQuickAction({
   thread,
   className,
+  disabled,
 }: {
   thread: Thread;
   className?: string;
+  disabled?: boolean;
 }) {
   const { archiveThreadAndChildren, unarchiveThread } = useThreadActions();
   const isArchived = thread.archivedAt != null;
@@ -363,6 +365,7 @@ export function ThreadArchiveQuickAction({
           size="icon"
           className={cn("rounded-md p-0", className)}
           aria-label={`${label} thread`}
+          disabled={disabled}
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
