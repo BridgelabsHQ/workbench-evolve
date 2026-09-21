@@ -68,8 +68,9 @@ pnpm exec turbo run desktop:build --filter=@bb/desktop
 pnpm exec turbo run smoke:packaged --filter=@bb/desktop
 ```
 
-Artifacts are written under `apps/desktop/release/`. The macOS build is Apple
-Silicon arm64-only; Intel Macs are not a target. Without signing secrets, local builds
+Artifacts are written under `apps/desktop/release/`. The macOS build is a
+universal binary that runs on Apple Silicon (arm64) and Intel (x64) Macs.
+Without signing secrets, local builds
 sign with a code-signing identity auto-discovered from the keychain and skip
 notarization. A valid signature matters even for local builds: macOS
 provenance-tracks unsigned apps, forcing syspolicyd to evaluate every exec in
@@ -90,7 +91,8 @@ that the collector never selected. The explicit file set enters both ASAR's
 file index and its unpacked resources before signing.
 
 Packaging runs an offline npm smoke check in `afterPack`, before signing or
-publishing. This requires a native target host (macOS arm64 or Linux x64).
+publishing. This requires a native target host (macOS on either architecture,
+or Linux x64).
 `smoke:packaged` repeats it against the resulting artifact. To run only npm
 verification without opening a desktop window:
 
@@ -210,10 +212,10 @@ so a single publisher is what keeps one platform from deleting the other's
 binaries. Each platform has its own update feed file inside the same release
 tag:
 
-| Platform | Artifacts              | electron-updater metadata | Version feed                 |
-| -------- | ---------------------- | ------------------------- | ---------------------------- |
-| macOS    | `.dmg`, `.zip` (arm64) | `latest-mac.yml`          | `desktop-version.json`       |
-| Linux    | `.AppImage` (x64)      | `latest-linux.yml`        | `desktop-version-linux.json` |
+| Platform | Artifacts                  | electron-updater metadata | Version feed                 |
+| -------- | -------------------------- | ------------------------- | ---------------------------- |
+| macOS    | `.dmg`, `.zip` (universal) | `latest-mac.yml`          | `desktop-version.json`       |
+| Linux    | `.AppImage` (x64)          | `latest-linux.yml`        | `desktop-version-linux.json` |
 
 macOS keeps the unsuffixed feed name because released macOS builds already
 request it. Linux artifacts are unsigned; only the macOS binaries wait on the
@@ -341,7 +343,7 @@ Use the View menu to toggle DevTools. To open them automatically on launch, set
 `BB_DESKTOP_OPEN_DEVTOOLS=1`:
 
 ```bash
-BB_DESKTOP_OPEN_DEVTOOLS=1 apps/desktop/release/mac-arm64/bb.app/Contents/MacOS/bb
+BB_DESKTOP_OPEN_DEVTOOLS=1 apps/desktop/release/mac-universal/bb.app/Contents/MacOS/bb
 ```
 
 When the desktop app spawns `bb-app`, server and daemon logs land under
