@@ -980,6 +980,11 @@ describe("ThreadRow", () => {
         name: /(?:Expand|Collapse) Nested discussion/,
       });
       const titleContainer = toggle.parentElement;
+      const link = screen.getByRole("link", {
+        name: "Open Nested discussion with enough text to fill the sidebar width",
+      });
+      const navigationTarget = link.parentElement;
+      const titleWrapper = link.nextElementSibling;
       expect(
         titleContainer?.classList.contains("bb-sidebar-hover-actions-inset"),
       ).toBe(false);
@@ -987,6 +992,8 @@ describe("ThreadRow", () => {
       expect(
         titleContainer?.classList.contains("max-md:pointer-coarse:pr-0"),
       ).toBe(true);
+      expect(navigationTarget?.classList.contains("flex-1")).toBe(true);
+      expect(titleWrapper?.classList.contains("flex-1")).toBe(false);
       fireEvent.click(toggle);
       expect(onToggleCollapsed).toHaveBeenCalledWith("thr_test");
     },
