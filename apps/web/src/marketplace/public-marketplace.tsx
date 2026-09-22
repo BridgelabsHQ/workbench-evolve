@@ -2,7 +2,7 @@ import AiContentGenerator01Icon from "@hugeicons/core-free-icons/AiContentGenera
 import AlertCircleIcon from "@hugeicons/core-free-icons/AlertCircleIcon";
 import Archive03Icon from "@hugeicons/core-free-icons/Archive03Icon";
 import ArrowDown01Icon from "@hugeicons/core-free-icons/ArrowDown01Icon";
-import ArrowUpRight01Icon from "@hugeicons/core-free-icons/ArrowUpRight01Icon";
+import LinkSquare02Icon from "@hugeicons/core-free-icons/LinkSquare02Icon";
 import AudioWave01Icon from "@hugeicons/core-free-icons/AudioWave01Icon";
 import Cancel01Icon from "@hugeicons/core-free-icons/Cancel01Icon";
 import ChartColumnIcon from "@hugeicons/core-free-icons/ChartColumnIcon";
@@ -58,7 +58,6 @@ import {
   filterMarketplaceCategory,
   filterMarketplaceEntries,
   formatInstalls,
-  formatMarketplaceDate,
   marketplaceAssetUrl,
   marketplaceAuthorPath,
   marketplaceCategoryOptions,
@@ -240,19 +239,23 @@ function AuthorAvatar({
 function InstallCount({
   entry,
   stats,
+  variant = "card",
 }: {
   entry: MarketplaceV2Entry;
   stats: MarketplaceStats | null;
+  variant?: "card" | "detail";
 }) {
   const total = marketplaceEntryInstalls(entry, stats);
+  const className = `marketplace-${variant}-installs`;
   if (total === undefined) {
-    return <span className="marketplace-card-installs is-new">New</span>;
+    return <span className={`${className} is-new`}>New</span>;
   }
-  const formatted = formatInstalls(total);
+  const formatted =
+    variant === "detail" ? total.toLocaleString("en-US") : formatInstalls(total);
   return (
     <span
-      className="marketplace-card-installs"
-      aria-label={`${total.toLocaleString("en-US")} installs`}
+      className={className}
+      aria-label={`${total.toLocaleString("en-US")} ${total === 1 ? "install" : "installs"}`}
     >
       <HugeiconsIcon icon={Download01Icon} aria-hidden />
       {formatted}
@@ -366,10 +369,10 @@ function Shelf({
     >
       <div className="marketplace-section-head">
         <div>
-          <div>
-            <h2>{shelf.label}</h2>
+          <h2>
+            {shelf.label}{"\u00a0"}
             <span>{shelf.entries.length}</span>
-          </div>
+          </h2>
           {description === undefined ? null : <p>{description}</p>}
         </div>
         <a
@@ -383,7 +386,7 @@ function Shelf({
             onSelect(shelf.id);
           }}
         >
-          View all <span aria-hidden>→</span>
+          View all
         </a>
       </div>
       <PluginGrid
@@ -854,10 +857,10 @@ function MoreInCategory({
     <section>
       <div className="marketplace-section-head">
         <div>
-          <div>
-            <h2>More in {categoryName}</h2>
+          <h2>
+            More in {categoryName}{"\u00a0"}
             <span>{entries.length}</span>
-          </div>
+          </h2>
           {category?.description === undefined ? null : (
             <p>{category.description}</p>
           )}
@@ -865,7 +868,7 @@ function MoreInCategory({
         <MarketplaceLink
           href={`/marketplace?category=${encodeURIComponent(categoryId)}`}
         >
-          View all <span aria-hidden>→</span>
+          View all
         </MarketplaceLink>
       </div>
       <PluginGrid
@@ -896,8 +899,6 @@ export function PublicMarketplaceDetailPage({
   const categoryDefinition = resolveMarketplaceCategory(manifest, entry);
   const category = categoryDefinition?.displayName ?? "More plugins";
   const categoryId = categoryDefinition?.id ?? UNCATEGORIZED_CATEGORY_ID;
-  const installs = marketplaceEntryInstalls(entry, stats);
-  const published = formatMarketplaceDate(entry.publishedAt);
   const repository = marketplaceRepositoryUrl(entry);
   const installCommand = marketplaceInstallCommand(entry.id);
   const authorSiblings = moreFromMarketplaceAuthor(manifest, entry);
@@ -926,64 +927,53 @@ export function PublicMarketplaceDetailPage({
           <PluginArtwork entry={entry} large />
           <div className="marketplace-detail-identity">
             <h1>{entry.displayName}</h1>
-          </div>
-          <div className="marketplace-detail-facts">
-            {authorPath === undefined ? (
-              <span className="marketplace-detail-author">
-                <AuthorAvatar author={entry.author} />
-                {entry.author.name}
-              </span>
-            ) : (
+            <div className="marketplace-detail-attribution">
+              {authorPath === undefined ? (
+                <span className="marketplace-detail-author">
+                  <AuthorAvatar author={entry.author} />
+                  <span>{entry.author.name}</span>
+                </span>
+              ) : (
+                <MarketplaceLink
+                  className="marketplace-detail-author"
+                  href={authorPath}
+                >
+                  <AuthorAvatar author={entry.author} />
+                  <span>{entry.author.name}</span>
+                </MarketplaceLink>
+              )}
               <MarketplaceLink
-                className="marketplace-detail-author"
-                href={authorPath}
+                className="marketplace-detail-category"
+                href={`/marketplace?category=${encodeURIComponent(categoryId)}`}
               >
-                <AuthorAvatar author={entry.author} />
-                {entry.author.name}
+                {category}
               </MarketplaceLink>
-            )}
-            <MarketplaceLink
-              className="marketplace-category-pill"
-              href={`/marketplace?category=${encodeURIComponent(categoryId)}`}
-            >
-              {category}
-            </MarketplaceLink>
-            <span className={installs === undefined ? "is-new" : undefined}>
-              {installs === undefined
-                ? "New"
-                : `${installs.toLocaleString("en-US")} ${installs === 1 ? "install" : "installs"}`}
-            </span>
-            {published === null ? null : <span>Listed {published}</span>}
-            <a
-              className="marketplace-detail-source"
-              href={repository}
-              target="_blank"
-              rel="noreferrer"
-            >
-              View source
-              <HugeiconsIcon icon={ArrowUpRight01Icon} aria-hidden />
-            </a>
+              <InstallCount entry={entry} stats={stats} variant="detail" />
+
+            </div>
           </div>
           <div className="marketplace-detail-install">
-            <CommandButton
-              command={installCommand}
-              label={`Copy ${installCommand}`}
-              size="compact"
-              onCopy={(copied) => {
-                if (!copied) return;
-                trackLandingEvent({
-                  name: "marketplace_install_command_copied",
-                  properties: { plugin_id: entry.id },
-                });
-              }}
-            />
-            <MarketplaceLink
-              className="marketplace-detail-source"
-              href="/download/macos"
-            >
-              Get it for macOS
-              <HugeiconsIcon icon={ArrowUpRight01Icon} aria-hidden />
-            </MarketplaceLink>
+            <div className="marketplace-detail-actions">
+              <CommandButton
+                command={installCommand}
+                label={`Copy ${installCommand}`}
+                size="compact"
+                onCopy={(copied) => {
+                  if (!copied) return;
+                  trackLandingEvent({
+                    name: "marketplace_install_command_copied",
+                    properties: { plugin_id: entry.id },
+                  });
+                }}
+              />
+              <MarketplaceLink
+                className="marketplace-detail-source marketplace-detail-download"
+                href="/download/macos"
+              >
+                Get it for macOS
+                <HugeiconsIcon icon={LinkSquare02Icon} aria-hidden />
+              </MarketplaceLink>
+            </div>
           </div>
         </header>
         {
@@ -1003,12 +993,21 @@ export function PublicMarketplaceDetailPage({
             )}
             <section className="marketplace-detail-section marketplace-overview-section">
               <p className="marketplace-overview-lead">{entry.description}</p>
+              <hr className="marketplace-overview-rule" />
+              <div className="marketplace-overview-heading">
+                <h2>Overview</h2>
+              <a
+                className="marketplace-detail-source"
+                href={repository}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View source
+                <HugeiconsIcon icon={LinkSquare02Icon} aria-hidden />
+              </a>
+              </div>
               {entry.overview === undefined ? null : (
-                <>
-                  <hr className="marketplace-overview-rule" />
-                  <h2>Overview</h2>
-                  <MarketplaceOverview markdown={entry.overview} />
-                </>
+                <MarketplaceOverview markdown={entry.overview} />
               )}
             </section>
             <MoreFromAuthor
@@ -1071,6 +1070,7 @@ export function PublicMarketplaceAuthorPage({
             >
               <HugeiconsIcon icon={GithubIcon} aria-hidden />
               {author.github}
+              <HugeiconsIcon icon={LinkSquare02Icon} aria-hidden />
             </a>
           )}
         </header>

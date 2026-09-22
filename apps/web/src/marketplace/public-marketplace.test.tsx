@@ -108,7 +108,7 @@ describe("public marketplace route rendering", () => {
     expect(html).not.toContain("marketplace-install-command");
     expect(html).not.toContain("Don&#x27;t have bb?");
     expect(html).not.toContain("Runs in bb");
-    expect(html).toContain("Listed");
+    expect(html).not.toContain("Listed");
     expect(html).toContain(
       'href="https://www.npmjs.com/package/@get-bb/plugin-prompt-library"',
     );
@@ -120,8 +120,12 @@ describe("public marketplace route rendering", () => {
     expect(html).toContain('loading="lazy"');
     expect(html).toContain('referrerPolicy="no-referrer"');
     expect(html).not.toContain("More from BB Labs");
-    expect(html).toContain("marketplace-overview-lead");
-    expect(html).not.toContain("marketplace-overview-rule");
+    expect(html).toContain(
+      `<p class="marketplace-overview-lead">${entry.description}</p>`,
+    );
+    expect(html.indexOf(entry.description)).toBeGreaterThan(
+      html.indexOf('class="marketplace-detail-install"'),
+    );
     expect(html.split(entry.description)).toHaveLength(2);
     expect(html).not.toContain("Version");
     expect(html).not.toContain("Updated");
@@ -190,7 +194,6 @@ describe("public marketplace route rendering", () => {
       html.indexOf("More in Code &amp; Reviews"),
     );
     expect(html).not.toContain("marketplace-screenshots");
-    expect(html).not.toContain("marketplace-overview-rule");
   });
 
   it("renders the category shelf alone when the author has no other plugins", () => {
