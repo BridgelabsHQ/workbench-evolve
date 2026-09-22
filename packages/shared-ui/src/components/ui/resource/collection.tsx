@@ -303,6 +303,7 @@ type ResourceBrowseCardProps = {
   byline?: ReactNode;
   headerAction?: ReactNode;
   footerMeta?: ReactNode;
+  footer?: ReactNode;
   pointerOnlyOpen?: boolean;
 } & (
   | { openLabel: string; onOpen: (trigger: HTMLButtonElement) => void }
@@ -319,6 +320,7 @@ export function ResourceBrowseCard({
   byline,
   headerAction,
   footerMeta,
+  footer,
   pointerOnlyOpen = false,
   openLabel,
   onOpen,
@@ -389,6 +391,11 @@ export function ResourceBrowseCard({
         <span className="pointer-events-none relative col-start-2 row-start-3 mt-1.5 flex min-h-4 min-w-0 items-center justify-end text-right">
           {footerMeta}
         </span>
+      ) : null}
+      {footer ? (
+        <div className="pointer-events-none relative col-span-2 row-start-3 min-w-0">
+          {footer}
+        </div>
       ) : null}
     </div>
   );
