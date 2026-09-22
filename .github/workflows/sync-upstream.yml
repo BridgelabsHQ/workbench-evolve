@@ -1,0 +1,123 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: true
+
+jobs:
+  mirror:
+    name: Mirror get-bb/bb main
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      advanced: ${{ steps.mirror.outputs.advanced }}
+      upstream_sha: ${{ steps.mirror.outputs.upstream_sha }}
+    steps:
+      - name: Checkout mirror branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: upstream
+          fetch-depth: 0
+
+      - name: Fast-forward mirror to get-bb/bb main
+        id: mirror
+        run: |
+          set -euo pipefail
+          before="$(git rev-parse HEAD)"
+          git fetch https://github.com/get-bb/bb.git main:upstream
+          after="$(git rev-parse upstream)"
+          echo "upstream_sha=$after" >> "$GITHUB_OUTPUT"
+          if [ "$before" = "$after" ]; then
+            echo "advanced=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "advanced=true" >> "$GITHUB_OUTPUT"
+            git push origin upstream
+          fi
+
+  sync-pull-request:
+    name: Upstream sync pull request
+    needs: mirror
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Merge upstream and track the result
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_SHA: ${{ needs.mirror.outputs.upstream_sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin upstream main
+          SYNC_BRANCH="sync/upstream"
+          TRACKING_TITLE="Upstream sync needs manual resolution"
+          OPEN_PR="$(gh pr list --head "$SYNC_BRANCH" --base main --state open --json number --jq '.[0].number // empty')"
+          if git merge-base --is-ancestor origin/upstream origin/main; then
+            if [ -n "$OPEN_PR" ]; then
+              gh pr close "$OPEN_PR" --comment "origin/main already contains origin/upstream; closing the sync pull request."
+            fi
+            git push origin --delete "$SYNC_BRANCH" || true
+            OPEN_ISSUE="$(gh issue list --search "\"$TRACKING_TITLE\" in:title" --state open --json number --jq '.[0].number // empty')"
+            if [ -n "$OPEN_ISSUE" ]; then
+              gh issue close "$OPEN_ISSUE" --comment "Upstream is merged; closing."
+            fi
+            exit 0
+          fi
+          git checkout -B "$SYNC_BRANCH" origin/main
+          if git merge --no-edit origin/upstream; then
+            git push --force origin "$SYNC_BRANCH"
+            if [ -z "$OPEN_PR" ]; then
+              gh pr create --base main --head "$SYNC_BRANCH" --title "Sync upstream get-bb/bb" --body "## Human comments
+
+          ## What was wrong
+
+          Routine hourly sync: get-bb/bb main has commits not yet in this fork.
+
+          ## What changed
+
+          Merge origin/upstream ($UPSTREAM_SHA) into main. Resolve conflicts in the pull request before merging; never push the result directly to main.
+
+          ## How you verified
+
+          Automation performed a clean merge only; required checks must pass before merging.
+
+          > AGENT GENERATED"
+            fi
+            OPEN_ISSUE="$(gh issue list --search "\"$TRACKING_TITLE\" in:title" --state open --json number --jq '.[0].number // empty')"
+            if [ -n "$OPEN_ISSUE" ]; then
+              gh issue close "$OPEN_ISSUE" --comment "Upstream merged cleanly into $SYNC_BRANCH; closing."
+            fi
+          else
+            git merge --abort
+            DIFFSTAT="$(git diff --stat main...origin/upstream | tail -n 8)"
+            BODY="<!-- upstream-sha: $UPSTREAM_SHA -->
+          The hourly sync could not merge origin/upstream ($UPSTREAM_SHA) into main without conflicts. Resolve manually and merge the sync pull request once clean.
+
+          \`\`\`
+          $DIFFSTAT
+          \`\`\`"
+            OPEN_ISSUE="$(gh issue list --search "\"$TRACKING_TITLE\" in:title" --state open --json number,body --jq '.[0] // empty')"
+            if [ -z "$OPEN_ISSUE" ]; then
+              gh issue create --title "$TRACKING_TITLE" --body "$BODY"
+            elif ! printf '%s' "$OPEN_ISSUE" | grep -q "$UPSTREAM_SHA"; then
+              NUMBER="$(printf '%s' "$OPEN_ISSUE" | jq -r '.number')"
+              gh issue edit "$NUMBER" --body "$BODY"
+            fi
+            exit 1
+          fi
