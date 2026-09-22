@@ -320,6 +320,12 @@ Drafts section or filter. Archived threads use their preserved placement and a
 restore action. Archived pages load only while selected.
 Plugin sidebar replacements own their filters.
 
+The palette's Filter uses Active and Archived independently of the
+sidebar, defaulting to Active. Its selection is browser-local, not configurable
+through SDK/CLI. Active includes threads with saved messages; Search threads retains
+the existing title and conversation search behavior. Archived fetches bounded recent rows only when
+selected.
+
 Every thread-list header's actions menu offers New project, New section,
 Organize, Sort by, and Filter. Organize selects By project,
 By machine, or Custom and retains Groups → By environment.

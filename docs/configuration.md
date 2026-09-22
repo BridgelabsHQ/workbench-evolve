@@ -741,6 +741,16 @@ that restores the thread without navigating away.
 Archived loads pages only while selected.
 Plugin sidebar replacements own their rendering.
 
+The palette's Filter independently selects Active and Archived before
+and after typing. It defaults to Active and remembers its selection in this
+browser only; it is not configurable through SDK/CLI.
+Active includes threads with saved messages. Search threads retains the existing
+title and conversation search behavior and opens the owning thread.
+Archived loads a bounded list in most-recently-archived order only while selected.
+Search uses the existing
+ranked Active/Archived response and displays the selected groups, with six initial
+rows in one group or three each when both are nonempty, plus Show more.
+
 `sidebar.threadGrouping.environment` decides whether two or more sibling threads
 that share one worktree environment collapse into a single worktree row inside
 their section. `true` groups them and `false` keeps every thread on its own row,
