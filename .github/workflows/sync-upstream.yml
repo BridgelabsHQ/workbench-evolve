@@ -23,17 +23,18 @@ jobs:
       advanced: ${{ steps.mirror.outputs.advanced }}
       upstream_sha: ${{ steps.mirror.outputs.upstream_sha }}
     steps:
-      - name: Checkout mirror branch
+      - name: Checkout main
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: upstream
+          ref: main
           fetch-depth: 0
 
       - name: Fast-forward mirror to get-bb/bb main
         id: mirror
         run: |
           set -euo pipefail
-          before="$(git rev-parse HEAD)"
+          git fetch origin upstream:upstream
+          before="$(git rev-parse upstream)"
           git fetch https://github.com/get-bb/bb.git main:upstream
           after="$(git rev-parse upstream)"
           echo "upstream_sha=$after" >> "$GITHUB_OUTPUT"
